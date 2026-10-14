@@ -2,6 +2,43 @@
 
 Verified on **14 October 2026 (Asia/Kolkata)** against the actual application. The local hackathon workflows are complete and passing. These results do not establish readiness for real-money or public production use.
 
+## Stellar integration verification
+
+The existing application was extended on branch `codex/stellar-testnet`, with baseline tag `codex/pre-stellar-20261014`. The original SQLite database and **all 19 private uploads were verified unchanged using their original SHA-256 hashes**. Development, local browser tests, Testnet CLI smoke and Testnet browser tests use separate databases/upload directories.
+
+| Executed check                                                                       | Actual result                                                                                        |
+| ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
+| `npm test`                                                                           | **56/56 passed**, seven files; 7.09 seconds                                                          |
+| `npm run typecheck`                                                                  | Passed                                                                                               |
+| `npm run lint`                                                                       | Passed, zero errors/warnings                                                                         |
+| `npm run test:contract`                                                              | **28/28 passed**, zero failed                                                                        |
+| Soroban WASM build                                                                   | Passed, 9,378-byte WASM, pinned SDK 28.0.0                                                           |
+| Testnet contract deployment                                                          | Confirmed; address and two deployment transactions in `deployments/stellar-testnet.json`             |
+| Original Playwright development suite                                                | **6/6 passed**, 45.3 seconds                                                                         |
+| Original Playwright production suite                                                 | **6/6 passed**, 32.1 seconds                                                                         |
+| `npm run test:stellar:smoke`                                                         | **Passed**, 17 real Testnet transactions confirmed and reconciled                                    |
+| `RUN_STELLAR_TESTNET_TESTS=1 PLAYWRIGHT_CHANNEL=chrome npm run test:stellar:browser` | **1/1 passed** on development, 2.3 minutes                                                           |
+| Same Testnet browser command with `PLAYWRIGHT_SERVER_MODE=production`                | **2/2 passed**, 2.1 minutes; eight real Testnet transactions confirmed                               |
+| Production browser runtime/console errors                                            | Zero during the full Testnet journey and original workflows                                          |
+| Testnet mobile view                                                                  | 390-pixel layout checked for overflow and closed navigation; retained screenshots                    |
+| `npm run jobs`                                                                       | Passed on separate development storage; accountability and Testnet reconciliation entry points ran   |
+| Build trace privacy                                                                  | No private data, environment or `.tools` signing/tool files in 19 checked traces                     |
+| Fresh `npm audit --json`                                                             | Zero critical; five existing high findings in development-only ESLint/glob chain; no runtime finding |
+
+The CLI smoke verified funded wallet ownership against Horizon, agreement creation/acceptance, multiple exact deposits, upload commitments, human review, normal release, duplicate payout rejection, dispute blocking, designated resolver release/refund, ghosting/recovery, a fresh replacement escrow and payout, preserved original entitlement, exact conservation, and an unchanged simulated ledger. [Public receipts](../deployments/testnet-smoke-2026-10-14.json) include hashes and confirmed ledgers.
+
+The final optimized build and default localhost:3000 launch passed. A Chrome startup check verified seeded login, the seven-project dashboard, configured Testnet controls, clear missing-wallet guidance, logout and zero browser errors. The disposable deployment identity was removed after deployment. No application or checked-in signing key is required.
+
+The production browser suite exercised the unmodified official Freighter API through an **explicit extension transport test fixture** whose temporary keys stay in the test process. Application HTTP routes, signed challenge verification, RPC, contract execution and SQLite reconciliation were real. It verified three role logins/wallet proofs, XLM project creation, dual agreement acceptance, contract acceptance, funding, upload, submission commitment, review, payout, dispute/refund, persisted status, explorer links, separate accounting and mobile overflow. A second check rejected a missing wallet and wrong network before any challenge request. [Browser receipts](../deployments/testnet-browser-2026-10-14.json), [desktop](screenshots/stellar-testnet-desktop.png), [mobile](screenshots/stellar-testnet-mobile.png).
+
+**External blocker:** Chrome's actual extensions page was inspected. It lists GoFullPage and Google Docs Offline, but no Freighter. Actual extension connection/popups and human wallet authorization therefore remain unverified. No user wallet keys or recovery phrases were created or stored. No mainnet or real-money transaction occurred. Follow [wallet setup and the manual demonstration](BLOCKCHAIN.md) to complete that verification.
+
+New deterministic coverage includes migration/legacy-ledger preservation, reset isolation, exact stroop arithmetic beyond safe floating-point range, aggregate formatting, canonical commitments, challenge/session/origin/replay/signature checks, duplicate transaction preparation/submission, receipt/event validation, restart recovery and replacement isolation. Expired attempts become retryable only when retained network history proves non-execution; uncertain outcomes remain blocked. A confirmed wallet-broadcast transaction can be recovered even when its signature never reached the API.
+
+Final safety checks also verify that different intents for one wallet cannot compete for a Stellar account sequence, and that a pending amendment blocks stale agreement creation. Confirmation validation and read-model updates share the same SQLite write lock.
+
+The following sections retain the original local-demo baseline results for comparison.
+
 ## Executed checks
 
 Environment: macOS Apple Silicon, Node.js **24.8.0**, npm **11.6.0**, Next.js **16.4.0**, installed Google Chrome via Playwright. Browser tests use real forms, buttons, uploads, downloads, and independent role sessions. API reads assert persisted state; browser workflow mutations are performed through the UI.

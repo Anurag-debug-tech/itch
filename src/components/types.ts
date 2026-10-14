@@ -13,6 +13,9 @@ export type Project = {
   freelancerId: string;
   budget: number;
   currency: string;
+  financialMode?: 'LOCAL_DEMO' | 'STELLAR_TESTNET';
+  budgetAtomic?: string;
+  resolverUserId?: string;
   startDate: string;
   deadline: string;
   scope: string;
@@ -33,6 +36,11 @@ export type Milestone = {
   description: string;
   requirements: string;
   budget: number;
+  amountAtomic?: string;
+  fundedAtomic?: string;
+  paidAtomic?: string;
+  refundedAtomic?: string;
+  archived?: boolean;
   dueDate: string;
   criteria: string[];
   allowedTypes: string[];
@@ -149,5 +157,53 @@ export type Bootstrap = {
   audit: Audit[];
   now: string;
   demoMode: boolean;
+  blockchain?: {
+    enabled: boolean;
+    configured: boolean;
+    network: string;
+    wallet: { id: string; address: string; network: string; verifiedAt: string } | null;
+    escrows: ChainEscrow[];
+    milestones: ChainMilestone[];
+    transactions: ChainTransaction[];
+  };
+};
+export type ChainEscrow = {
+  id: string;
+  projectId: string;
+  agreementId: string;
+  network: string;
+  contractId: string;
+  escrowId: string;
+  termsHash: string;
+  clientAddress: string;
+  freelancerAddress: string;
+  resolverAddress: string;
+  assetId: string;
+  state: string;
+  accepted: boolean;
+};
+export type ChainMilestone = {
+  escrowRef: string;
+  milestoneId: string;
+  chainId: string;
+  amount: string;
+  funded: string;
+  paid: string;
+  refunded: string;
+  state: string;
+  submissionHash?: string;
+};
+export type ChainTransaction = {
+  id: string;
+  userId: string;
+  projectId: string;
+  escrowRef: string;
+  milestoneId?: string;
+  method: string;
+  status: string;
+  txHash?: string;
+  error?: string;
+  createdAt: string;
+  updatedAt: string;
 };
 export type ActionPayload = Record<string, unknown>;

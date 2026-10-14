@@ -1,5 +1,7 @@
 # Pitch alignment review
 
+Historical review of the original local-demo pitch. Stellar Testnet support was subsequently implemented and deployed; use [the blockchain verification record](BLOCKCHAIN.md) for current capability claims. The original deck was not rewritten by that integration.
+
 Reviewed on 14 October 2026 (Asia/Kolkata).
 
 Source: the supplied eight-slide `MilestoneGuard_Hackathon_Pitch_Deck (2).pptx`. This review inspected the slide XML, rendered slide previews (including text embedded in images), application source, the original project brief, and the existing verification record. The original presentation and application code were not modified. Tests were not rerun for this content review; test counts below refer to the recorded verification on 14 October 2026 and the retained passing Playwright result.

@@ -2,9 +2,16 @@ import { existsSync } from 'node:fs';
 if (existsSync('.env.local')) process.loadEnvFile('.env.local');
 const { runJobs, audit } = await import('../src/lib/service');
 const { closeDb } = await import('../src/lib/db');
-function execute() {
+let running = false;
+async function execute() {
+  if (running) return;
+  running = true;
   try {
     console.log(runJobs());
+    if (process.env.STELLAR_TESTNET_ENABLED === 'true') {
+      const { reconcilePending } = await import('../src/lib/stellar/transactions');
+      console.log({ testnetReconciliation: await reconcilePending() });
+    }
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Unknown failure';
     console.error('Scheduled job failed:', message);
@@ -12,9 +19,11 @@ function execute() {
       audit(null, 'system', 'JOBS_FAILED', { message });
     } catch {}
     if (!process.argv.includes('--watch')) process.exitCode = 1;
+  } finally {
+    running = false;
   }
 }
-execute();
+await execute();
 if (process.argv.includes('--watch')) {
   setInterval(execute, 60000);
   for (const signal of ['SIGTERM', 'SIGINT'])

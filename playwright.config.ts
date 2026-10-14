@@ -25,6 +25,7 @@ export default defineConfig({
     reuseExistingServer: false,
     timeout: 120_000,
     env: {
+      STELLAR_TESTNET_ENABLED: 'false',
       DEMO_MODE: 'true',
       APP_ORIGIN: 'http://127.0.0.1:3100',
       DATABASE_PATH: path.resolve('data/e2e.sqlite'),

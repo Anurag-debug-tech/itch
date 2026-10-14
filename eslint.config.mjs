@@ -11,6 +11,8 @@ export default defineConfig([
     },
   },
   globalIgnores([
+    '.tools/**',
+    'contracts/target/**',
     '.next/**',
     'next-env.d.ts',
     'data/**',

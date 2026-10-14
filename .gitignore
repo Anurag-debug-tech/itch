@@ -6,6 +6,10 @@ node_modules/
 data/*
 !data/.gitkeep
 playwright-report/
+playwright-stellar-report/
 test-results/
+test-results-stellar/
 *.tsbuildinfo
 .DS_Store
+.tools/
+contracts/target/

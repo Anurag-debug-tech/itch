@@ -1,6 +1,7 @@
 import { randomUUID, createHash } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { assertResetSafe } from './stellar/store';
 import { getDb, get, put, all, demoMode, transaction } from './db';
 import { passwordHash, publicUser } from './auth';
 import { action, now, runJobs } from './service';
@@ -213,11 +214,14 @@ function seedInternal() {
 }
 export function resetDemo() {
   assert(demoMode(), 'Reset requires DEMO_MODE=true');
+  assertResetSafe();
   return transaction(() => {
     const d = getDb();
     d.exec('DROP TRIGGER immutable_ledger_delete;');
     for (const table of [
       'sessions',
+      'wallet_challenges',
+      'wallet_links',
       'payment_intents',
       'ledger',
       'submissions',

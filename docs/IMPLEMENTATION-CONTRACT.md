@@ -1,5 +1,7 @@
 # Shared implementation contract
 
+The original local-demo interface below is preserved. The additive [Stellar Testnet integration](BLOCKCHAIN.md) adds `/api/wallet`, `/api/stellar`, a scoped `blockchain` bootstrap read model, and separate exact XLM accounting; it does not replace these synchronous local-demo operations.
+
 Next.js App Router, TypeScript, Node 24 built-in node:sqlite, React. Local explicitly enabled DEMO_MODE=true. No hosted credentials needed. Application UI is a SPA in src/app/page.tsx with /login etc optional catchall via shared component. All data via same-origin API, cookie auth. Money integer paise.
 
 ## HTTP

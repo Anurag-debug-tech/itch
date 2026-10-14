@@ -3,6 +3,9 @@ import { all, get, put, getDb, transaction, demoMode, type Row } from './db';
 import { assert } from './errors';
 import { publicUser, type User } from './auth';
 import { paymentAdapter } from './payments';
+import { atomic } from './stellar/amounts';
+import { chainReadModel } from './stellar/store';
+import { enabled as stellarEnabled } from './stellar/config';
 export { now } from './time';
 import { now } from './time';
 const stamp = () => now();
@@ -94,6 +97,13 @@ export function snapshot(p: Row, ms: Row[]) {
       deadline: p.deadline,
       clientId: p.clientId,
       freelancerId: p.freelancerId,
+      ...(p.financialMode === 'STELLAR_TESTNET'
+        ? {
+            financialMode: p.financialMode,
+            budgetAtomic: p.budgetAtomic,
+            resolverUserId: p.resolverUserId,
+          }
+        : {}),
     },
     milestones: ms.map((m) => ({
       id: m.id,
@@ -108,6 +118,7 @@ export function snapshot(p: Row, ms: Row[]) {
       revisionLimit: m.revisionLimit,
       reviewHours: m.reviewHours,
       assignedFreelancerId: m.assignedFreelancerId,
+      ...(m.amountAtomic ? { amountAtomic: m.amountAtomic } : {}),
     })),
   };
 }
@@ -133,6 +144,21 @@ function createProject(user: User, b: Row) {
     .prepare("SELECT id FROM users WHERE id=? AND role='FREELANCER'")
     .get(b.freelancerId || '');
   assert(target, 'Choose a registered freelancer');
+  const financialMode = b.financialMode || 'LOCAL_DEMO';
+  assert(['LOCAL_DEMO', 'STELLAR_TESTNET'].includes(financialMode), 'Invalid financial mode');
+  const chain = financialMode === 'STELLAR_TESTNET';
+  assert(!chain || stellarEnabled(), 'Stellar Testnet mode is disabled', 503);
+  assert(
+    Array.isArray(b.milestones) && b.milestones.length > 0 && b.milestones.length <= 30,
+    'Add 1–30 milestones',
+  );
+  if (chain)
+    assert(
+      getDb()
+        .prepare("SELECT id FROM users WHERE id=? AND role='ADMIN'")
+        .get(b.resolverUserId || ''),
+      'Choose the designated dispute resolver',
+    );
   const p: Row = {
     id: randomUUID(),
     clientId: user.id,
@@ -140,8 +166,12 @@ function createProject(user: User, b: Row) {
     title: text(b.title, 'Title', 200),
     description: text(b.description, 'Description'),
     category: text(b.category, 'Category', 100),
-    budget: number(b.budget, 'Budget'),
-    currency: 'INR',
+    // Legacy INR columns remain unused for chain accounting. Positive tracking weights retain
+    // the original schema constraints; all Testnet money lives in exact string fields/tables.
+    budget: chain ? b.milestones.length : number(b.budget, 'Budget'),
+    currency: chain ? 'XLM' : 'INR',
+    financialMode,
+    ...(chain ? { budgetAtomic: atomic(b.budgetAtomic), resolverUserId: b.resolverUserId } : {}),
     startDate: date(b.startDate, 'start date'),
     deadline: date(b.deadline, 'deadline'),
     scope: text(b.scope, 'Scope'),
@@ -156,7 +186,10 @@ function createProject(user: User, b: Row) {
     createdAt: stamp(),
     priorFreelancerIds: [],
   };
-  assert(!b.currency || b.currency === 'INR', 'Only INR is supported');
+  assert(
+    !b.currency || b.currency === (chain ? 'XLM' : 'INR'),
+    'Currency does not match financial mode',
+  );
   assert(p.deadline >= p.startDate, 'Deadline must follow project start');
   assert(
     Array.isArray(b.milestones) && b.milestones.length > 0 && b.milestones.length <= 30,
@@ -185,7 +218,8 @@ function createProject(user: User, b: Row) {
       title: text(v.title, 'Milestone title', 200),
       description: text(v.description, 'Milestone description'),
       requirements: text(v.requirements, 'Requirements'),
-      budget: number(v.budget, 'Milestone budget'),
+      budget: chain ? 1 : number(v.budget, 'Milestone budget'),
+      ...(chain ? { amountAtomic: atomic(v.amountAtomic) } : {}),
       dueDate: date(v.dueDate, 'milestone due date'),
       criteria: v.criteria.map((c: unknown) => text(c, 'Criterion', 500)),
       allowedTypes: v.allowedTypes.map((t: string) => t.replace(/^\./, '').toLowerCase()),
@@ -210,6 +244,12 @@ function createProject(user: User, b: Row) {
     ms.reduce((s: number, m: Row) => s + m.budget, 0) === p.budget,
     'Milestone budgets must equal the project budget',
   );
+  if (chain)
+    assert(
+      ms.reduce((sum: bigint, m: Row) => sum + BigInt(m.amountAtomic), 0n).toString() ===
+        p.budgetAtomic,
+      'XLM milestone amounts must equal the project total',
+    );
   put('projects', p);
   ms.forEach((m: Row) => put('milestones', m));
   const a = agreement(p, snapshot(p, ms));
@@ -268,6 +308,7 @@ export function bootstrap(user: User) {
       .filter(
         (u) =>
           u.role === 'FREELANCER' ||
+          u.role === 'ADMIN' ||
           u.id === user.id ||
           user.role === 'ADMIN' ||
           projects.some((p) => p.clientId === u.id),
@@ -318,6 +359,14 @@ export function bootstrap(user: User) {
         return clean;
       });
   data.notifications = all('notifications').filter((r) => r.userId === user.id);
+  data.blockchain = chainReadModel(user.id, new Set(projects.map((p) => p.id)));
+  for (const m of data.milestones) {
+    if (!m.amountAtomic) continue;
+    const confirmed = data.blockchain.milestones.find((r: Row) => r.milestoneId === m.id);
+    m.fundedAtomic = confirmed?.funded || '0';
+    m.paidAtomic = confirmed?.paid || '0';
+    m.refundedAtomic = confirmed?.refunded || '0';
+  }
   return data;
 }
 export function action(user: User, b: Row): Row {
@@ -388,6 +437,11 @@ function perform(user: User, b: Row): Row {
       return { ok: true };
     }
     admin(user);
+    assert(
+      p.financialMode !== 'STELLAR_TESTNET',
+      'Use the designated resolver wallet for on-chain settlement',
+      409,
+    );
     return resolveDispute(user, d, p, b);
   }
   if (b.type === 'inviteReplacement') {
@@ -420,6 +474,10 @@ function perform(user: User, b: Row): Row {
     p.freelancerId = b.freelancerId;
     p.status = 'AWAITING_AGREEMENT';
     p.budget = remaining.reduce((sum: number, m: Row) => sum + m.budget, 0);
+    if (p.financialMode === 'STELLAR_TESTNET')
+      p.budgetAtomic = remaining
+        .reduce((sum: bigint, m: Row) => sum + BigInt(m.amountAtomic), 0n)
+        .toString();
     p.startDate = stamp();
     p.deadline = new Date(Date.parse(stamp()) + 30 * 86400000).toISOString();
     p.risk = 'HEALTHY';
@@ -466,7 +524,12 @@ function perform(user: User, b: Row): Row {
     r.replacementId = b.freelancerId;
     r.agreementId = a.id;
     put('recoveries', r);
-    notify(p, 'Replacement agreement created. New work requires separate simulated funding.');
+    notify(
+      p,
+      p.financialMode === 'STELLAR_TESTNET'
+        ? 'Replacement agreement created. Original escrow rights are unchanged; new work requires a separate Testnet escrow and funding.'
+        : 'Replacement agreement created. New work requires separate simulated funding.',
+    );
     audit(p.id, user.id, 'REPLACEMENT_INVITED', {
       recoveryId: r.id,
       previousFreelancer: old,
@@ -477,6 +540,19 @@ function perform(user: User, b: Row): Row {
   const m = b.milestoneId ? milestoneFor(user, b.milestoneId) : undefined;
   const p = projectFor(user, b.projectId || m?.projectId);
   if (m) assert(m.projectId === p.id, 'Milestone does not belong to project');
+  if (p.financialMode === 'STELLAR_TESTNET') {
+    assert(
+      !['fund', 'payout', 'dispute'].includes(b.type),
+      'Use the wallet-authorized Testnet escrow controls',
+      409,
+    );
+    if (b.type === 'amend')
+      assert(
+        !getDb().prepare('SELECT id FROM chain_escrows WHERE projectId=? LIMIT 1').get(p.id),
+        'On-chain terms are fixed. Use a new agreement/project for changed terms.',
+        409,
+      );
+  }
   switch (b.type) {
     case 'acceptAgreement': {
       assert(
@@ -827,7 +903,12 @@ function perform(user: User, b: Row): Row {
         put('milestones', current);
       }
       audit(p.id, user.id, 'RECOVERY_CREATED', { recoveryId: r.id, reason });
-      notify(p, 'Recovery opened. Unresolved simulated funds are restricted.');
+      notify(
+        p,
+        p.financialMode === 'STELLAR_TESTNET'
+          ? 'Recovery opened. Original Testnet escrow rights remain fixed; any settlement requires explicit wallet authorization.'
+          : 'Recovery opened. Unresolved simulated funds are restricted.',
+      );
       return { ok: true, recovery: r };
     }
     default:
@@ -995,6 +1076,14 @@ function runJobsInternal() {
             `Please review “${m.title}” within the agreed window.`,
           );
         if (elapsed >= m.reviewHours) {
+          if (p.financialMode === 'STELLAR_TESTNET') {
+            once(
+              p,
+              `CHAIN_REVIEW_ESCALATED_${m.id}_${m.submittedAt}`,
+              'Review overdue. Request a wallet-authorized on-chain dispute. A local reminder does not freeze or release Testnet funds.',
+            );
+            continue;
+          }
           if (!all('disputes').some((d) => d.milestoneId === m.id && d.status === 'OPEN')) {
             createDispute(
               p,

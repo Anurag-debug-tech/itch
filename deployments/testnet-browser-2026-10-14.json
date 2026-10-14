@@ -1,0 +1,74 @@
+{
+  "network": "STELLAR_TESTNET",
+  "contractId": "CDQODC2CCYGKCUKTXXN24BQK4GMKJLUK4QQOWKJP2POD5W3B5NDC27ID",
+  "signing": "Freighter API extension transport fixture; actual extension popup not exercised",
+  "mode": "production",
+  "verifiedAt": "2026-10-14T05:39:53.786Z",
+  "browserTestsPassed": 2,
+  "transactions": [
+    {
+      "method": "create_agreement",
+      "hash": "952a5b0b0bfd7558cac9445b57514748bbea0a533da27a5f06081ad0983a942f",
+      "ledger": 5186537,
+      "explorer": "https://stellar.expert/explorer/testnet/tx/952a5b0b0bfd7558cac9445b57514748bbea0a533da27a5f06081ad0983a942f"
+    },
+    {
+      "method": "accept_agreement",
+      "hash": "14c50c41c458ffd8aba24429916152b68320b7c45a4ec5d7501c18deedce6f67",
+      "ledger": 5186539,
+      "explorer": "https://stellar.expert/explorer/testnet/tx/14c50c41c458ffd8aba24429916152b68320b7c45a4ec5d7501c18deedce6f67"
+    },
+    {
+      "method": "fund_milestone",
+      "hash": "dee9b1d68f9de97c5147dbe283f2e7e7ce93e9fffb3b0a873ddd85e428937b7d",
+      "ledger": 5186541,
+      "explorer": "https://stellar.expert/explorer/testnet/tx/dee9b1d68f9de97c5147dbe283f2e7e7ce93e9fffb3b0a873ddd85e428937b7d"
+    },
+    {
+      "method": "fund_milestone",
+      "hash": "e5bb63effda41eeca4d1de3acc2c4110b74a1932a654c50813321cca6140b393",
+      "ledger": 5186544,
+      "explorer": "https://stellar.expert/explorer/testnet/tx/e5bb63effda41eeca4d1de3acc2c4110b74a1932a654c50813321cca6140b393"
+    },
+    {
+      "method": "submit_work",
+      "hash": "15e62ee573bbb16384e68daccd1d0f89f25a5a2e64064be033ce737be7fe3d9f",
+      "ledger": 5186547,
+      "explorer": "https://stellar.expert/explorer/testnet/tx/15e62ee573bbb16384e68daccd1d0f89f25a5a2e64064be033ce737be7fe3d9f"
+    },
+    {
+      "method": "approve_and_release",
+      "hash": "e190df621279e5c546b7969c34e2b459c0b29d6aa38761ee5eaf945381b3b913",
+      "ledger": 5186550,
+      "explorer": "https://stellar.expert/explorer/testnet/tx/e190df621279e5c546b7969c34e2b459c0b29d6aa38761ee5eaf945381b3b913"
+    },
+    {
+      "method": "raise_dispute",
+      "hash": "22a9de2a734228349bc0cf31a6e509037e370658309e7341113dce2c57ae72c1",
+      "ledger": 5186552,
+      "explorer": "https://stellar.expert/explorer/testnet/tx/22a9de2a734228349bc0cf31a6e509037e370658309e7341113dce2c57ae72c1"
+    },
+    {
+      "method": "refund_authorized",
+      "hash": "e31a7bf22623469e5e4359edc0a748e191b551183dad44abd73a434d09548d72",
+      "ledger": 5186554,
+      "explorer": "https://stellar.expert/explorer/testnet/tx/e31a7bf22623469e5e4359edc0a748e191b551183dad44abd73a434d09548d72"
+    }
+  ],
+  "balances": [
+    {
+      "amount": "1000000",
+      "funded": "1000000",
+      "paid": "1000000",
+      "refunded": "0",
+      "state": "Paid"
+    },
+    {
+      "amount": "1000000",
+      "funded": "1000000",
+      "paid": "0",
+      "refunded": "1000000",
+      "state": "Refunded"
+    }
+  ]
+}

@@ -1,5 +1,7 @@
 # Four-scenario demonstration guide
 
+This guide covers **LOCAL_DEMO simulated INR**. The separate [Stellar Testnet walkthrough](BLOCKCHAIN.md) documents wallet setup, real Testnet confirmations, resolver settlements and replacement escrows. Do not reset a database containing chain history; the application blocks this action.
+
 Run the setup, migration, seed, and development commands in the README. Keep `npm run jobs:watch` running in a second terminal for automatic background checks, or use the administrator's **Run accountability checks** control. Use [localhost:3000](http://localhost:3000) consistently; the exact configured origin is enforced for writes.
 
 All money is simulated. No real payment credentials are needed. Sign out to switch roles, or use separate browser profiles for client, freelancer, replacement, and administrator. The sign-in page has demo role buttons. All demo passwords are `DemoPass123!`.

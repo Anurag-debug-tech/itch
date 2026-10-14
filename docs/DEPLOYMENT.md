@@ -26,7 +26,7 @@ JOBS_TOKEN=replace-with-a-different-cryptographically-random-secret
 
 The example values are placeholders. `npm run setup` generates random secrets locally; do not copy them into source code, logs, screenshots, or the browser bundle. Restrict the configuration file and volume to the application account. Terminate HTTPS through a reverse proxy and set the origin to the exact public URL. Current opaque sessions are cryptographically random and stored by hash; `SESSION_SECRET` is reserved for a future signed-session adapter and is not their security mechanism.
 
-This release deliberately requires `DEMO_MODE=true` for the local adapter. Disabling it refuses local database operations rather than silently reverting to demo access. Therefore any hosted instance of this version remains a demo. Do not invite real-money transactions or sensitive client documents.
+This local adapter requires explicit `DEMO_MODE=true` or `STELLAR_TESTNET_ENABLED=true`; neither flag establishes production readiness. Hosted instances remain demonstrations. See [Testnet configuration](BLOCKCHAIN.md) for separate storage and the deployed contract. Do not invite real-money transactions or sensitive client documents.
 
 ## Background processing
 

@@ -2,13 +2,15 @@
 
 **Verify the work. Protect the payment. Finish the project.**
 
-A full-stack freelancer accountability demonstration with versioned mutual agreements, private deliverable evidence, human review, simulated payment protection, risk monitoring, disputes, and project recovery. Data persists in SQLite and private local files. No external API key or provider account is needed to run the local demo.
+A full-stack freelancer accountability demonstration with versioned mutual agreements, private deliverable evidence, human review, simulated payment protection, risk monitoring, disputes, and project recovery. Data persists in SQLite and private local files. Optional Stellar Soroban Testnet escrow adds wallet-authorized XLM funding, payouts and resolver settlements to the existing application. No external API key or provider account is needed for the local INR demo.
 
-**SIMULATED FUNDS — DEMONSTRATION MODE.** The application never transfers real money and does not offer regulated escrow. Scope suggestions use rules unless an optional AI provider is explicitly configured. Acceptance and financial decisions remain with authorized humans.
+**NO REAL MONEY.** `LOCAL_DEMO` uses simulated INR. Explicitly selected `STELLAR_TESTNET` projects transfer free Testnet XLM through the deployed escrow contract. The two modes have separate accounting; no mainnet or live INR service is provided. Scope suggestions use rules unless an optional AI provider is explicitly configured. Acceptance and financial decisions remain with authorized humans.
 
 ## Verified status
 
-The local hackathon workflows are complete. On 14 October 2026, TypeScript, ESLint (zero warnings), 25 Vitest tests, six Playwright tests on development and production servers, and the optimized build passed. Browser coverage includes all four roles, simulated payments, ghosting/recovery, disputes, revisions/amendments, private downloads, registration, settings, notifications, and reset. See [actual test results and limitations](docs/VERIFICATION.md) and [build progress](BUILD_PROGRESS.md).
+The local hackathon workflows remain verified. The integration has 56 passing Vitest tests, 28 passing Soroban tests and six passing original Playwright workflows on both development and production servers. A real Testnet smoke run confirmed 17 transactions covering payout, dispute release/refund and replacement isolation. Two production browser Testnet checks passed, using an explicit extension transport fixture for signing. Actual Freighter popup signing remains unverified because Freighter is absent in the inspected Chrome profile. See [actual results](docs/VERIFICATION.md), [blockchain setup and walkthrough](docs/BLOCKCHAIN.md), and [progress](BLOCKCHAIN_PROGRESS.md).
+
+The Testnet contract is `CDQODC2CCYGKCUKTXXN24BQK4GMKJLUK4QQOWKJP2POD5W3B5NDC27ID`. [View deployment](https://stellar.expert/explorer/testnet/tx/142e2bcf4471b33426772824168efecd615c7813949635879e8e16e5b61bb16f). Public network/asset/version details and transaction proof are in `deployments/`.
 
 ## Run locally
 
@@ -24,7 +26,7 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000). `setup` creates `.env.local` once with random local secrets and private filesystem permissions. Existing configuration is preserved. It does not create a cloud database or live payment account. Keep `.env.local`, `data/`, and uploaded files out of source control.
 
-To configure manually, copy `.env.example` to `.env.local`, explicitly enable `DEMO_MODE=true`, and set the database, upload directory, and origin. Startup refuses the local adapter when demo mode is disabled; it never silently enables demo behavior in production.
+To configure manually, copy `.env.example` to `.env.local`, explicitly enable `DEMO_MODE=true`, and set the database, upload directory, and origin. The adapter requires an explicit demo or Testnet flag; it never silently enables either. For Testnet, follow [the separate-storage configuration](docs/BLOCKCHAIN.md). On the current development machine that configuration is already present, and the original database/uploads remain preserved.
 
 ## Demo access
 
@@ -50,7 +52,7 @@ npm run jobs
 npm run jobs:watch
 ```
 
-The administrator can also use the demo clock and job controls in the interface. A timer never releases money on its own.
+The administrator can also use the demo clock and job controls in the interface. A timer never releases money on its own. Reset is blocked whenever escrow history exists; Testnet state survives a local reset and must be preserved/reconciled.
 
 ## Validate
 
@@ -71,20 +73,24 @@ Vitest uses a disposable database for domain and security integration tests. Pla
 
 If Google Chrome is already installed, run `PLAYWRIGHT_CHANNEL=chrome npm run test:e2e` instead of downloading a browser. For production verification use `PLAYWRIGHT_CHANNEL=chrome PLAYWRIGHT_SERVER_MODE=production npm run test:e2e` after building. Port 3100 must be free. Inspect the latest browser report with `npx playwright show-report`.
 
+The optional blockchain checks are `npm run test:contract`, `npm run test:stellar:smoke`, and `RUN_STELLAR_TESTNET_TESTS=1 PLAYWRIGHT_CHANNEL=chrome npm run test:stellar:browser`. The latter two contact Testnet with disposable fixture accounts and create fresh retained storage. The browser suite uses port 3200 and clearly identifies its Freighter transport test double. See [blockchain verification details](docs/BLOCKCHAIN.md).
+
 ## Structure
 
-| Path          | Purpose                                                                                           |
-| ------------- | ------------------------------------------------------------------------------------------------- |
-| `src/app/`    | Responsive interface and API routes                                                               |
-| `src/lib/`    | Authentication, database, authorization, workflow services, verification, payment and AI adapters |
-| `migrations/` | SQLite schema and integrity constraints                                                           |
-| `scripts/`    | Setup, migrations, deterministic seeding, reset, scheduled processing                             |
-| `tests/`      | Workflow/security integration tests and Playwright E2E coverage                                   |
-| `data/`       | Ignored persistent database and private evidence                                                  |
-| `docs/`       | Architecture, security, deployment, demonstration, and verification                               |
+| Path           | Purpose                                                                                           |
+| -------------- | ------------------------------------------------------------------------------------------------- |
+| `src/app/`     | Responsive interface and API routes                                                               |
+| `src/lib/`     | Authentication, database, authorization, workflow services, verification, payment and AI adapters |
+| `migrations/`  | SQLite schema and integrity constraints                                                           |
+| `scripts/`     | Setup, migrations, deterministic seeding, reset, scheduled processing                             |
+| `tests/`       | Workflow/security integration tests and Playwright E2E coverage                                   |
+| `data/`        | Ignored persistent database and private evidence                                                  |
+| `docs/`        | Architecture, security, deployment, demonstration, and verification                               |
+| `contracts/`   | Pinned Rust Soroban escrow and security/lifecycle tests                                           |
+| `deployments/` | Public Testnet deployment configuration and confirmed transaction proof                           |
 
 Read the [four-scenario demo guide](docs/DEMO.md), [architecture](docs/ARCHITECTURE.md), [security checklist](docs/SECURITY.md), and [deployment guide](docs/DEPLOYMENT.md).
 
 ## Boundaries
 
-This implementation is designed for a reliable hackathon demonstration. It has no live payment processing, Supabase adapter, production identity verification, external email delivery, or malware scanning service. It must run on a persistent Node host with a writable volume; stateless serverless hosting does not fit the local storage adapter. A production launch requires provider integrations, access-control review, operations, and legal assessment. No production-readiness claim is made.
+This implementation is designed for a hackathon demonstration. Actual Freighter wallet setup remains required. On-chain settlements support full release or full refund; split settlements remain local-demo-only. Multisig/smart wallets, a historical indexer and automated archived-state restoration are outside scope. It has no mainnet/live INR payments, Supabase adapter, production identity verification, external email delivery, or malware scanning service. It must run on a persistent Node host with a writable volume; stateless serverless hosting does not fit the local storage adapter. No production-readiness or independent contract-audit claim is made.

@@ -26,6 +26,8 @@
 
 ## Explicit limitations
 
+Optional Stellar Testnet mode uses fixed on-chain participants, signed session/origin-bound wallet challenges, exact XLM units and confirmed-state reconciliation. Only the fixed resolver wallet can settle a dispute; application administration does not grant that key. No private user signing keys are stored. See [the wallet and transaction trust boundaries](BLOCKCHAIN.md). Actual Freighter popup signing remains an unverified external setup step; no independent smart-contract audit has been performed.
+
 This is a local hackathon implementation, not a claim of production readiness. Simulated balances are neither custodial assets nor escrow. The rule-based Scope Doctor is not an LLM. Subjective acceptance remains a human decision. Inactivity warnings are explainable signals, not fraud findings or automatic reputation penalties.
 
 No hosted Supabase adapter, live payment provider, email delivery, malware scanner, or production identity verification is provisioned. API keys cannot be fabricated: adding those services requires a real provider account and appropriately scoped credentials. This application's local database requires no database API key.

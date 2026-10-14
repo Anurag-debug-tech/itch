@@ -13,6 +13,12 @@ export interface PaymentAdapter {
   processVerifiedWebhook(): never;
 }
 function request(kind: string, milestoneId: string, amount: number, reference: string): Row {
+  const milestone = get('milestones', milestoneId);
+  assert(
+    milestone && get('projects', milestone.projectId)?.financialMode !== 'STELLAR_TESTNET',
+    'Simulated payments cannot operate on Testnet projects',
+    409,
+  );
   const d = getDb();
   const prior = d.prepare('SELECT * FROM payment_intents WHERE reference=?').get(reference) as
     Row | undefined;

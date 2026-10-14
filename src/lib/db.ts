@@ -1,12 +1,12 @@
 import { DatabaseSync } from 'node:sqlite';
-import { mkdirSync, readFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 let db: DatabaseSync | undefined;
 export function demoMode() {
   return process.env.DEMO_MODE === 'true';
 }
 export function getDb() {
-  if (!demoMode())
+  if (!demoMode() && process.env.STELLAR_TESTNET_ENABLED !== 'true')
     throw new Error(
       'Local database requires explicit DEMO_MODE=true. A hosted production adapter is not configured.',
     );
@@ -16,7 +16,31 @@ export function getDb() {
       mkdirSync(dirname(resolve(/* turbopackIgnore: true */ path)), { recursive: true });
     db = new DatabaseSync(path);
     db.exec('PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;');
-    db.exec(readFileSync(resolve('migrations/001_initial.sql'), 'utf8'));
+    db.exec(
+      'CREATE TABLE IF NOT EXISTS schema_migrations(name TEXT PRIMARY KEY,appliedAt TEXT NOT NULL)',
+    );
+    for (const name of readdirSync(resolve('migrations'))
+      .filter((n) => /^\d+_.*\.sql$/.test(n))
+      .sort()) {
+      if (db.prepare('SELECT 1 FROM schema_migrations WHERE name=?').get(name)) continue;
+      db.exec('BEGIN IMMEDIATE');
+      try {
+        // Recheck after acquiring the write lock, because another process may have migrated.
+        if (!db.prepare('SELECT 1 FROM schema_migrations WHERE name=?').get(name)) {
+          db.exec(readFileSync(resolve('migrations', name), 'utf8'));
+          db.prepare('INSERT INTO schema_migrations VALUES (?,?)').run(
+            name,
+            new Date().toISOString(),
+          );
+        }
+        db.exec('COMMIT');
+      } catch (error) {
+        db.exec('ROLLBACK');
+        db.close();
+        db = undefined;
+        throw error;
+      }
+    }
   }
   return db;
 }

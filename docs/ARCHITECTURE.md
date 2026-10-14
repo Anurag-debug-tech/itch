@@ -1,6 +1,6 @@
 # Architecture and trust boundaries
 
-MilestoneGuard is a single Next.js application using React, TypeScript, Node.js 24, and a persistent SQLite database. It runs without external database, AI, payment, or storage API keys. Demo mode is explicit. All displayed financial balances are **SIMULATED FUNDS — DEMONSTRATION MODE**; no bank transfer or regulated escrow occurs.
+MilestoneGuard is a single Next.js application using React, TypeScript, Node.js 24, and a persistent SQLite database. It runs without external database, AI, payment, or storage API keys. `LOCAL_DEMO` is explicit and uses simulated INR. Optional `STELLAR_TESTNET` projects use a separate asynchronous Soroban escrow adapter and exact Testnet XLM accounting. See [blockchain architecture and operation](BLOCKCHAIN.md). No mainnet, bank transfer or regulated escrow service is provided.
 
 ## Components
 
@@ -17,7 +17,7 @@ The browser requests operations; the server independently checks identity, proje
 
 ## Records and invariants
 
-Users participate in projects through client/freelancer assignments. Projects contain milestones, versioned agreements, submissions, ledger records, check-ins, disputes, recovery cases, notifications, and audit events. Money is stored as integer paise, and milestone budgets must add up to the project budget.
+Users participate in projects through client/freelancer assignments. Projects contain milestones, versioned agreements, submissions, ledger records, check-ins, disputes, recovery cases, notifications, and audit events. Local-demo money is integer paise. Testnet amounts are decimal strings of stroops in separate chain tables; legacy integer budget fields are nonfinancial tracking weights for those projects. Each mode validates that milestone amounts sum to its project budget. The project mode is immutable.
 
 Work begins only after both parties accept the same immutable agreement version. Amendments create a new version, retain history, and require fresh signatures. Submission versions and hashes preserve evidence. Automated file checks supply evidence and mark subjective criteria for human review; they never approve a payout.
 

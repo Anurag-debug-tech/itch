@@ -1,4 +1,6 @@
 'use client';
+import { WalletControls, StellarEscrowPanel, StellarBalances } from '@/components/StellarEscrow';
+import { formatXlm, parseXlm, xlmInput } from '@/lib/stellar/amounts';
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import {
   ArrowUpRight,
@@ -86,6 +88,20 @@ const initials = (s: string) =>
     .join('');
 const finished = (m: Milestone) => ['ACCEPTED', 'RELEASED'].includes(m.status);
 const riskBad = (p: Project) => !['LOW', 'HEALTHY', 'ON_TRACK', 'NONE'].includes(p.risk || 'LOW');
+const projectMoney = (p: Project) =>
+  p.financialMode === 'STELLAR_TESTNET' ? formatXlm(p.budgetAtomic || '0') : money(p.budget);
+const milestoneMoney = (m: Milestone) =>
+  m.amountAtomic ? formatXlm(m.amountAtomic) : money(m.budget);
+const protectedMoney = (m: Milestone) =>
+  m.amountAtomic
+    ? formatXlm(
+        (
+          BigInt(m.fundedAtomic || '0') -
+          BigInt(m.paidAtomic || '0') -
+          BigInt(m.refundedAtomic || '0')
+        ).toString(),
+      )
+    : money(m.funded - m.paid - m.refunded);
 async function request(path: string, body?: unknown) {
   const res = await fetch(path, {
     ...(body !== undefined
@@ -538,11 +554,15 @@ export default function Home() {
                 </div>
               </header>
               <main className="main-content">
+                <WalletControls data={data} onChange={refresh} />
                 {data.demoMode && (
                   <div className="demo-banner">
                     <span>
-                      <span className="demo-pill">DEMO WORKSPACE</span> Simulated funds —
-                      demonstration mode
+                      <span className="demo-pill">DEMO WORKSPACE</span>{' '}
+                      {data.blockchain?.enabled ||
+                      data.projects.some((p) => p.financialMode === 'STELLAR_TESTNET')
+                        ? 'Local simulated INR · Stellar Testnet XLM'
+                        : 'Simulated funds — demonstration mode'}
                     </span>
                     <span>
                       Rule-based assistance{' '}
@@ -643,6 +663,7 @@ export default function Home() {
                     act={act}
                     dialog={setDialog}
                     openProject={openProject}
+                    refresh={refresh}
                   />
                 )}
                 {view === 'payments' && (
@@ -653,6 +674,7 @@ export default function Home() {
                       description="A complete record of funding, protected balances and confirmed settlements."
                     />
                     <FinancialCards data={data} />
+                    <StellarBalances data={data} />
                     <LedgerTable rows={data.ledger} data={data} />
                   </>
                 )}
@@ -846,7 +868,11 @@ export default function Home() {
                           </div>
                           <div className="detail-pair">
                             <span>Payment environment</span>
-                            <strong>Simulated payments</strong>
+                            <strong>
+                              {data.blockchain?.enabled
+                                ? 'Local demo INR / Stellar Testnet XLM, selected per project'
+                                : 'Simulated payments'}
+                            </strong>
                           </div>
                           <div className="detail-pair">
                             <span>Scope assistance</span>
@@ -892,7 +918,12 @@ export default function Home() {
                   <span>
                     <ShieldCheck size={14} /> MilestoneGuard · Built for work that gets finished.
                   </span>
-                  <span>All amounts in INR</span>
+                  <span>
+                    {data.blockchain?.enabled ||
+                    data.projects.some((p) => p.financialMode === 'STELLAR_TESTNET')
+                      ? 'INR and Testnet XLM shown separately'
+                      : 'All amounts in INR'}
+                  </span>
                 </footer>
               </main>
             </div>
@@ -1281,7 +1312,9 @@ function Dashboard({
 }) {
   const active = data.projects.filter((p) => p.status !== 'COMPLETED' && p.status !== 'CANCELLED'),
     pending = data.milestones.filter((m) => ['SUBMITTED', 'IN_REVIEW'].includes(m.status)),
-    protectedFunds = data.milestones.reduce((s, m) => s + m.funded - m.paid - m.refunded, 0),
+    protectedFunds = data.milestones
+      .filter((m) => !m.amountAtomic)
+      .reduce((s, m) => s + m.funded - m.paid - m.refunded, 0),
     completed = data.milestones.filter(finished),
     risky = data.projects.filter(riskBad);
   const greeting =
@@ -1340,6 +1373,7 @@ function Dashboard({
           color="blue"
         />
       </div>
+      <StellarBalances data={data} />
       <div className="dashboard-grid">
         <div className="dashboard-primary">
           <Panel
@@ -1581,7 +1615,7 @@ function ProjectCard({
           <CalendarDays size={14} />
           {date(p.deadline)}
         </span>
-        <strong>{money(p.budget)}</strong>
+        <strong>{projectMoney(p)}</strong>
       </div>
       <div className="project-card-person">
         <span className="avatar tiny">
@@ -1639,7 +1673,14 @@ function ActivityList({
   );
 }
 function FinancialCards({ data, projectId }: { data: Bootstrap; projectId?: string }) {
-  const ms = data.milestones.filter((m) => !projectId || m.projectId === projectId);
+  if (
+    projectId &&
+    data.projects.find((p) => p.id === projectId)?.financialMode === 'STELLAR_TESTNET'
+  )
+    return <StellarBalances data={data} projectId={projectId} />;
+  const ms = data.milestones.filter(
+    (m) => !m.amountAtomic && (!projectId || m.projectId === projectId),
+  );
   return (
     <div className="stats-grid three">
       <Stat
@@ -1721,6 +1762,7 @@ function ProjectDetail({
   act,
   dialog,
   openProject,
+  refresh,
 }: {
   data: Bootstrap;
   project: Project;
@@ -1730,6 +1772,7 @@ function ProjectDetail({
   act: (p: ActionPayload) => Promise<unknown>;
   dialog: (v: { kind: string; id?: string; projectId?: string }) => void;
   openProject: (id: string, tab?: string) => void;
+  refresh: () => Promise<unknown>;
 }) {
   const p = project,
     ms = data.milestones.filter((m) => m.projectId === p.id),
@@ -1770,11 +1813,14 @@ function ProjectDetail({
           </span>
           <span>
             <Wallet size={15} />
-            {money(p.budget)}
+            {projectMoney(p)}
           </span>
           <Badge value={p.risk} />
         </div>
       </div>
+      {p.financialMode === 'STELLAR_TESTNET' && (
+        <StellarEscrowPanel data={data} project={p} onChange={refresh} />
+      )}
       <div className="tabs" role="tablist">
         {[
           'milestones',
@@ -1832,7 +1878,11 @@ function ProjectDetail({
           <Panel
             title="Project scope"
             action={
-              (client || freelancer) && (
+              (client || freelancer) &&
+              !(
+                p.financialMode === 'STELLAR_TESTNET' &&
+                data.blockchain?.escrows.some((e) => e.projectId === p.id)
+              ) && (
                 <Btn kind="secondary" onClick={() => dialog({ kind: 'amend', projectId: p.id })}>
                   Propose amendment
                 </Btn>
@@ -2083,7 +2133,7 @@ function MilestoneCard({
           <p>{m.description}</p>
         </div>
         <div className="milestone-amount">
-          <strong>{money(m.budget)}</strong>
+          <strong>{milestoneMoney(m)}</strong>
           <Badge value={m.status} />
         </div>
       </div>
@@ -2125,7 +2175,7 @@ function MilestoneCard({
           </div>
           <div className="detail-pair">
             <span>Protected</span>
-            <strong>{money(m.funded - m.paid - m.refunded)}</strong>
+            <strong>{protectedMoney(m)}</strong>
           </div>
           {m.submittedAt && (
             <div className="detail-pair">
@@ -2134,7 +2184,7 @@ function MilestoneCard({
             </div>
           )}
           <div className="milestone-actions">
-            {client && m.status === 'AWAITING_FUNDING' && (
+            {client && !m.amountAtomic && m.status === 'AWAITING_FUNDING' && (
               <Btn disabled={busy} onClick={() => act({ type: 'fund', milestoneId: m.id })}>
                 <LockKeyhole size={15} />
                 Fund milestone
@@ -2160,13 +2210,17 @@ function MilestoneCard({
                 </Btn>
               </>
             )}
-            {client && m.status === 'ACCEPTED' && m.funded > m.paid + m.refunded && (
-              <Btn disabled={busy} onClick={() => act({ type: 'payout', milestoneId: m.id })}>
-                Release simulated payment
-                <ArrowUpRight size={15} />
-              </Btn>
-            )}
-            {(client || freelancer) &&
+            {client &&
+              !m.amountAtomic &&
+              m.status === 'ACCEPTED' &&
+              m.funded > m.paid + m.refunded && (
+                <Btn disabled={busy} onClick={() => act({ type: 'payout', milestoneId: m.id })}>
+                  Release simulated payment
+                  <ArrowUpRight size={15} />
+                </Btn>
+              )}
+            {!m.amountAtomic &&
+              (client || freelancer) &&
               ![
                 'DRAFT',
                 'AWAITING_AGREEMENT',
@@ -2425,10 +2479,18 @@ function DisputeList({
                     <Send size={15} />
                     Add statement
                   </Btn>
-                  {data.user.role === 'ADMIN' && (
-                    <Btn onClick={() => dialog({ kind: 'resolve', id: d.id })}>
-                      Record resolution
-                      <ArrowRight size={16} />
+                  {data.user.role === 'ADMIN' &&
+                    data.projects.find((p) => p.id === d.projectId)?.financialMode !==
+                      'STELLAR_TESTNET' && (
+                      <Btn onClick={() => dialog({ kind: 'resolve', id: d.id })}>
+                        Record resolution
+                        <ArrowRight size={16} />
+                      </Btn>
+                    )}
+                  {data.projects.find((p) => p.id === d.projectId)?.financialMode ===
+                    'STELLAR_TESTNET' && (
+                    <Btn onClick={() => openProject(d.projectId)}>
+                      Open wallet-authorized escrow controls
                     </Btn>
                   )}
                 </>
@@ -2820,6 +2882,10 @@ function ProjectWizard({
     [scope, setScope] = useState(''),
     [freelancerId, setFreelancerId] = useState(''),
     [budget, setBudget] = useState('12000'),
+    [financialMode, setFinancialMode] = useState<'LOCAL_DEMO' | 'STELLAR_TESTNET'>('LOCAL_DEMO'),
+    [resolverUserId, setResolverUserId] = useState(
+      data.users.find((u) => u.role === 'ADMIN')?.id || '',
+    ),
     [startDate, setStartDate] = useState(today),
     [deadline, setDeadline] = useState(later),
     [exclusions, setExclusions] = useState(
@@ -2837,19 +2903,38 @@ function ProjectWizard({
     [milestones, setMilestones] = useState<DraftMilestone[]>([]),
     [scopeBusy, setScopeBusy] = useState(false),
     [error, setError] = useState('');
+  const isChain = financialMode === 'STELLAR_TESTNET';
+  function wizardMoney(value: string) {
+    try {
+      return isChain ? formatXlm(parseXlm(value)) : money(Math.round(Number(value) * 100));
+    } catch {
+      return 'Enter a valid amount';
+    }
+  }
   function applyTemplate(name: string) {
     const t = templates[name];
     setCategory(name);
     setTitle(t.title);
     setDescription(t.scope);
     setScope(t.scope);
-    const total = Math.round(Number(budget) || 12000),
+    let chainTotal = 0n;
+    if (isChain) {
+      try {
+        chainTotal = BigInt(parseXlm(budget));
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Invalid XLM amount');
+        return;
+      }
+    }
+    const total = isChain ? 0 : Math.round(Number(budget) || 12000),
       base = Math.floor(total / 3);
     setMilestones(
       t.milestones.map((m, i) => ({
         ...m,
         requirements: m.description,
-        budget: String(i === 2 ? total - base * 2 : base),
+        budget: isChain
+          ? xlmInput((i === 2 ? chainTotal - (chainTotal / 3n) * 2n : chainTotal / 3n).toString())
+          : String(i === 2 ? total - base * 2 : base),
         dueDate: new Date(new Date(data.now).getTime() + (i + 1) * 10 * 86400000)
           .toISOString()
           .slice(0, 10),
@@ -2882,70 +2967,87 @@ function ProjectWizard({
   function next(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError('');
-    if (step === 0) {
-      if (!milestones.length) {
-        const t = templates[category];
-        const total = Math.round(Number(budget) * 100),
-          base = Math.floor(total / 3);
-        setMilestones(
-          t.milestones.map((m, i) => ({
+    try {
+      if (step === 0) {
+        if (!milestones.length) {
+          const t = templates[category];
+          const total = isChain ? 0 : Math.round(Number(budget) * 100),
+            base = Math.floor(total / 3);
+          const chainTotal = isChain ? BigInt(parseXlm(budget)) : 0n;
+          setMilestones(
+            t.milestones.map((m, i) => ({
+              ...m,
+              requirements: m.description,
+              budget: isChain
+                ? xlmInput(
+                    (i === 2 ? chainTotal - (chainTotal / 3n) * 2n : chainTotal / 3n).toString(),
+                  )
+                : String((i === 2 ? total - base * 2 : base) / 100),
+              dueDate: deadline,
+              criteria: m.criteria.join('\n'),
+              allowedTypes: 'pdf,png,jpg,zip,txt',
+              maxFileSize: '10',
+              revisionLimit: '2',
+              reviewHours: '72',
+            })),
+          );
+        }
+        setStep(1);
+      } else if (step === 1) {
+        if (
+          isChain
+            ? milestones.reduce((s, m) => s + BigInt(parseXlm(m.budget)), 0n) !==
+              BigInt(parseXlm(budget))
+            : milestones.reduce((s, m) => s + Math.round(Number(m.budget) * 100), 0) !==
+              Math.round(Number(budget) * 100)
+        ) {
+          setError('Milestone budgets must add up exactly to the total project budget.');
+          return;
+        }
+        if (milestones.some((m) => m.dueDate < startDate || m.dueDate > deadline)) {
+          setError(
+            'Every milestone due date must fall between the project start date and deadline.',
+          );
+          return;
+        }
+        setStep(2);
+      } else {
+        create({
+          title,
+          description,
+          category,
+          freelancerId,
+          financialMode,
+          budget: isChain ? milestones.length : Math.round(Number(budget) * 100),
+          currency: isChain ? 'XLM' : 'INR',
+          ...(isChain ? { budgetAtomic: parseXlm(budget), resolverUserId } : {}),
+          startDate,
+          deadline,
+          scope,
+          exclusions,
+          revisionPolicy,
+          acceptancePolicy,
+          disputePolicy,
+          milestones: milestones.map((m) => ({
             ...m,
-            requirements: m.description,
-            budget: String((i === 2 ? total - base * 2 : base) / 100),
-            dueDate: deadline,
-            criteria: m.criteria.join('\n'),
-            allowedTypes: 'pdf,png,jpg,zip,txt',
-            maxFileSize: '10',
-            revisionLimit: '2',
-            reviewHours: '72',
+            budget: isChain ? 1 : Math.round(Number(m.budget) * 100),
+            ...(isChain ? { amountAtomic: parseXlm(m.budget) } : {}),
+            criteria: m.criteria
+              .split('\n')
+              .map((s) => s.trim())
+              .filter(Boolean),
+            allowedTypes: m.allowedTypes
+              .split(',')
+              .map((s) => s.trim().replace(/^\./, '').toLowerCase())
+              .filter(Boolean),
+            maxFileSize: Math.round(Number(m.maxFileSize) * 1024 * 1024),
+            revisionLimit: Number(m.revisionLimit),
+            reviewHours: Number(m.reviewHours),
           })),
-        );
+        });
       }
-      setStep(1);
-    } else if (step === 1) {
-      if (
-        milestones.reduce((s, m) => s + Math.round(Number(m.budget) * 100), 0) !==
-        Math.round(Number(budget) * 100)
-      ) {
-        setError('Milestone budgets must add up exactly to the total project budget.');
-        return;
-      }
-      if (milestones.some((m) => m.dueDate < startDate || m.dueDate > deadline)) {
-        setError('Every milestone due date must fall between the project start date and deadline.');
-        return;
-      }
-      setStep(2);
-    } else {
-      create({
-        title,
-        description,
-        category,
-        freelancerId,
-        budget: Math.round(Number(budget) * 100),
-        currency: 'INR',
-        startDate,
-        deadline,
-        scope,
-        exclusions,
-        revisionPolicy,
-        acceptancePolicy,
-        disputePolicy,
-        milestones: milestones.map((m) => ({
-          ...m,
-          budget: Math.round(Number(m.budget) * 100),
-          criteria: m.criteria
-            .split('\n')
-            .map((s) => s.trim())
-            .filter(Boolean),
-          allowedTypes: m.allowedTypes
-            .split(',')
-            .map((s) => s.trim().replace(/^\./, '').toLowerCase())
-            .filter(Boolean),
-          maxFileSize: Math.round(Number(m.maxFileSize) * 1024 * 1024),
-          revisionLimit: Number(m.revisionLimit),
-          reviewHours: Number(m.reviewHours),
-        })),
-      });
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Check the project amounts');
     }
   }
   return (
@@ -2993,6 +3095,50 @@ function ProjectWizard({
             </Panel>
             <Panel title="Project essentials">
               <div className="panel-body form-grid">
+                <Field label="Payment mode">
+                  <select
+                    value={financialMode}
+                    onChange={(e) => {
+                      const mode = e.target.value as 'LOCAL_DEMO' | 'STELLAR_TESTNET';
+                      setFinancialMode(mode);
+                      setBudget(mode === 'STELLAR_TESTNET' ? '3' : '12000');
+                      setMilestones([]);
+                      setAcceptancePolicy(
+                        mode === 'STELLAR_TESTNET'
+                          ? 'Client reviews within 72 hours. Testnet XLM release requires explicit wallet authorization; time alone never pays.'
+                          : 'Client reviews within 72 hours. Acceptance is required before a simulated payout.',
+                      );
+                    }}
+                  >
+                    <option value="LOCAL_DEMO">Local demo · simulated INR</option>
+                    <option value="STELLAR_TESTNET" disabled={!data.blockchain?.enabled}>
+                      Stellar Testnet · XLM only
+                    </option>
+                  </select>
+                </Field>
+                {isChain && (
+                  <>
+                    <p className="info-strip">
+                      TESTNET ONLY — NO REAL MONEY. XLM balances are separate from simulated INR.
+                    </p>
+                    <Field label="Dispute resolver">
+                      <select
+                        required
+                        value={resolverUserId}
+                        onChange={(e) => setResolverUserId(e.target.value)}
+                      >
+                        <option value="">Choose an administrator</option>
+                        {data.users
+                          .filter((u) => u.role === 'ADMIN')
+                          .map((u) => (
+                            <option key={u.id} value={u.id}>
+                              {u.name}
+                            </option>
+                          ))}
+                      </select>
+                    </Field>
+                  </>
+                )}
                 <Field label="Project title">
                   <input
                     required
@@ -3025,10 +3171,11 @@ function ProjectWizard({
                       ))}
                   </select>
                 </Field>
-                <Field label="Total budget (INR)">
+                <Field label={isChain ? 'Total budget (Testnet XLM)' : 'Total budget (INR)'}>
                   <input
                     required
-                    type="number"
+                    type={isChain ? 'text' : 'number'}
+                    inputMode="decimal"
                     min="1"
                     step="0.01"
                     value={budget}
@@ -3092,12 +3239,24 @@ function ProjectWizard({
             <div className="wizard-budget">
               <span>
                 <Wallet size={19} />
-                Total project budget <strong>{money(Math.round(Number(budget) * 100))}</strong>
+                Total project budget <strong>{wizardMoney(budget)}</strong>
               </span>
               <span>
                 Milestones allocated{' '}
                 <strong>
-                  {money(milestones.reduce((s, m) => s + Math.round(Number(m.budget) * 100), 0))}
+                  {isChain
+                    ? formatXlm(
+                        milestones
+                          .reduce((s, m) => {
+                            try {
+                              return s + BigInt(parseXlm(m.budget));
+                            } catch {
+                              return s;
+                            }
+                          }, 0n)
+                          .toString(),
+                      )
+                    : money(milestones.reduce((s, m) => s + Math.round(Number(m.budget) * 100), 0))}
                 </strong>
               </span>
             </div>
@@ -3125,10 +3284,11 @@ function ProjectWizard({
                       onChange={(e) => updateMilestone(i, 'title', e.target.value)}
                     />
                   </Field>
-                  <Field label={`Milestone ${i + 1} budget (INR)`}>
+                  <Field label={`Milestone ${i + 1} budget (${isChain ? 'Testnet XLM' : 'INR'})`}>
                     <input
                       required
-                      type="number"
+                      type={isChain ? 'text' : 'number'}
+                      inputMode="decimal"
                       min="1"
                       step="0.01"
                       value={m.budget}
@@ -3292,7 +3452,7 @@ function ProjectWizard({
                 </div>
                 <div className="detail-pair">
                   <span>Total budget</span>
-                  <strong>{money(Math.round(Number(budget) * 100))}</strong>
+                  <strong>{wizardMoney(budget)}</strong>
                 </div>
                 {milestones.map((m, i) => (
                   <div className="detail-pair" key={i}>
@@ -3300,7 +3460,7 @@ function ProjectWizard({
                       {i + 1}. {m.title}
                     </span>
                     <strong>
-                      {money(Math.round(Number(m.budget) * 100))} · {date(m.dueDate)}
+                      {wizardMoney(m.budget)} · {date(m.dueDate)}
                     </strong>
                   </div>
                 ))}
