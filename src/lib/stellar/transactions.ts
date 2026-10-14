@@ -3,6 +3,7 @@ import { Keypair, Transaction, TransactionBuilder } from '@stellar/stellar-sdk';
 import { all, get, getDb, put, transaction, type Row } from '../db';
 import { assert, AppError } from '../errors';
 import type { User } from '../auth';
+import { completeProjectIfReady } from '../completion';
 import { audit, createDispute, notify, projectFor } from '../service';
 import { atomic } from './amounts';
 import { chainConfig, NETWORK, PASSPHRASE } from './config';
@@ -600,12 +601,8 @@ export function applyConfirmation(
         'INSERT INTO chain_sync VALUES (?,?,?,?) ON CONFLICT(network,contractId) DO UPDATE SET lastLedger=MAX(lastLedger,excluded.lastLedger),updatedAt=excluded.updatedAt',
       )
       .run(NETWORK, e.contractId, receipt.ledger!, stamp());
-    const p = get('projects', e.projectId)!,
-      current = all('milestones').filter((m) => m.projectId === p.id && !m.archived);
-    if (current.length && current.every((m) => ['RELEASED', 'REFUNDED'].includes(m.status))) {
-      p.status = current.every((m) => m.status === 'REFUNDED') ? 'CANCELLED' : 'COMPLETED';
-      put('projects', p);
-    }
+    const p = get('projects', e.projectId)!;
+    completeProjectIfReady(p.id);
     audit(p.id, t.userId, 'STELLAR_TRANSACTION_CONFIRMED', {
       method: t.method,
       transactionHash: t.txHash,

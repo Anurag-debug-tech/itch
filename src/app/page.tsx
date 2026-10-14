@@ -1,5 +1,14 @@
 'use client';
 import { WalletControls, StellarEscrowPanel, StellarBalances } from '@/components/StellarEscrow';
+import {
+  PaymentHistoryPanel,
+  DisputeReviewPanel,
+  RiskPolicyPanel,
+  LegalOrdersPanel,
+  AuditHistory,
+  ScopeAdvicePanel,
+  type ScopeAdvice,
+} from '@/components/Readiness';
 import { formatXlm, parseXlm, xlmInput } from '@/lib/stellar/amounts';
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import {
@@ -37,7 +46,6 @@ import {
   CalendarDays,
   ExternalLink,
   Send,
-  History,
   Briefcase,
   ArrowDownLeft,
   Loader2,
@@ -125,7 +133,7 @@ function Badge({ value }: { value?: string }) {
       ? 'green'
       : /DISPUTED|HIGH|CRITICAL|FAIL|BLOCKED|RECOVERY/.test(v)
         ? 'red'
-        : /PENDING|REVIEW|AWAITING|MEDIUM|RISK|REVISION|WARNING/.test(v)
+        : /PENDING|REVIEW|AWAITING|MEDIUM|RISK|REVISION|WARNING|ATTENTION/.test(v)
           ? 'amber'
           : 'gray';
   return (
@@ -565,7 +573,7 @@ export default function Home() {
                         : 'Simulated funds — demonstration mode'}
                     </span>
                     <span>
-                      Rule-based assistance{' '}
+                      {data.ai?.mode || 'Rule-based assistance'}{' '}
                       <span className="hide-small">· No real money moves</span>
                     </span>
                   </div>
@@ -676,6 +684,7 @@ export default function Home() {
                     <FinancialCards data={data} />
                     <StellarBalances data={data} />
                     <LedgerTable rows={data.ledger} data={data} />
+                    <PaymentHistoryPanel data={data} onChange={refresh} />
                   </>
                 )}
                 {view === 'monitoring' && (
@@ -751,6 +760,7 @@ export default function Home() {
                       disputes={data.disputes}
                       dialog={setDialog}
                       openProject={openProject}
+                      onChange={refresh}
                     />
                   </>
                 )}
@@ -876,7 +886,7 @@ export default function Home() {
                           </div>
                           <div className="detail-pair">
                             <span>Scope assistance</span>
-                            <strong>Rule-based suggestions</strong>
+                            <strong>{data.ai?.mode || 'Rule-based assistance'}</strong>
                           </div>
                           <Btn kind="secondary" onClick={logout}>
                             <LogOut size={16} />
@@ -892,7 +902,14 @@ export default function Home() {
                   </>
                 )}
                 {view === 'admin' && user.role === 'ADMIN' && (
-                  <Admin data={data} act={act} busy={busy} dialog={setDialog} />
+                  <Admin
+                    data={data}
+                    act={act}
+                    busy={busy}
+                    dialog={setDialog}
+                    openProject={openProject}
+                    refresh={refresh}
+                  />
                 )}
                 {![
                   'dashboard',
@@ -1636,40 +1653,13 @@ function ActivityList({
   projectId?: string;
   limit?: number;
 }) {
-  const rows = data.audit
-    .filter((a) => !projectId || a.projectId === projectId)
-    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
-    .slice(0, limit);
-  return rows.length ? (
-    <div className="activity-list">
-      {rows.map((a) => (
-        <div className="activity-row" key={a.id}>
-          <span className="activity-dot">
-            <History size={14} />
-          </span>
-          <div>
-            <p>
-              <strong>{label(a.action)}</strong>
-            </p>
-            <small>
-              {data.users.find((u) => u.id === a.actorId)?.name || 'System'}
-              {a.projectId && <> · {data.projects.find((p) => p.id === a.projectId)?.title}</>}
-            </small>
-            {a.detail != null && (
-              <details>
-                <summary>View recorded details</summary>
-                <pre>
-                  {typeof a.detail === 'string' ? a.detail : JSON.stringify(a.detail, null, 2)}
-                </pre>
-              </details>
-            )}
-          </div>
-          <time>{time(a.createdAt)}</time>
-        </div>
-      ))}
-    </div>
-  ) : (
-    <Empty title="The story starts here" icon={<History size={26} />} />
+  return (
+    <AuditHistory
+      key={data.user.id + ':' + (projectId || 'all')}
+      data={data}
+      projectId={projectId}
+      limit={limit}
+    />
   );
 }
 function FinancialCards({ data, projectId }: { data: Bootstrap; projectId?: string }) {
@@ -2012,7 +2002,10 @@ function ProjectDetail({
       {tab === 'payments' && (
         <>
           <FinancialCards data={data} projectId={p.id} />
-          <LedgerTable rows={data.ledger.filter((l) => l.projectId === p.id)} data={data} />
+          {p.financialMode !== 'STELLAR_TESTNET' && (
+            <LedgerTable rows={data.ledger.filter((l) => l.projectId === p.id)} data={data} />
+          )}
+          <PaymentHistoryPanel data={data} projectId={p.id} onChange={refresh} />
         </>
       )}
       {tab === 'progress' && (
@@ -2090,6 +2083,7 @@ function ProjectDetail({
           disputes={data.disputes.filter((d) => d.projectId === p.id)}
           dialog={dialog}
           openProject={openProject}
+          onChange={refresh}
         />
       )}
       {tab === 'activity' && (
@@ -2300,6 +2294,14 @@ function SubmissionCard({
             <p>{c.explanation}</p>
           </div>
         ))}
+        {s.verification?.objective?.map((c, i) => (
+          <div key={'objective' + i}>
+            <Badge value={c.result} />
+            <strong>{c.name}</strong>
+            <p>{c.explanation}</p>
+            <small>Evidence: {c.reference}</small>
+          </div>
+        ))}
         {s.verification?.criteria?.map((c, i) => (
           <div key={'criterion' + i}>
             <Badge value={c.result} />
@@ -2416,11 +2418,13 @@ function DisputeList({
   disputes,
   dialog,
   openProject,
+  onChange,
 }: {
   data: Bootstrap;
   disputes: Dispute[];
   dialog: (v: { kind: string; id?: string; projectId?: string }) => void;
   openProject: (id: string, tab?: string) => void;
+  onChange: () => Promise<unknown>;
 }) {
   return disputes.length ? (
     <div className="dispute-list">
@@ -2459,6 +2463,7 @@ function DisputeList({
                 </div>
               </div>
             )}
+            <DisputeReviewPanel data={data} dispute={d} onChange={onChange} />
             <div className="button-row wrap">
               <button
                 className="btn secondary"
@@ -2584,11 +2589,15 @@ function Admin({
   act,
   busy,
   dialog,
+  openProject,
+  refresh,
 }: {
   data: Bootstrap;
   act: (p: ActionPayload) => Promise<unknown>;
   busy: boolean;
   dialog: (v: { kind: string; id?: string; projectId?: string }) => void;
+  openProject: (id: string, tab?: string) => void;
+  refresh: () => Promise<unknown>;
 }) {
   return (
     <>
@@ -2608,8 +2617,14 @@ function Admin({
         <Stat
           title="Accepted, awaiting release"
           value={String(
-            data.milestones.filter((m) => m.status === 'ACCEPTED' && m.paid + m.refunded < m.funded)
-              .length,
+            data.milestones.filter(
+              (m) =>
+                m.status === 'ACCEPTED' &&
+                (m.amountAtomic
+                  ? BigInt(m.paidAtomic || '0') + BigInt(m.refundedAtomic || '0') <
+                    BigInt(m.fundedAtomic || '0')
+                  : m.paid + m.refunded < m.funded),
+            ).length,
           )}
           note="Client-authorized payout actions"
           icon={<Wallet size={19} />}
@@ -2617,8 +2632,11 @@ function Admin({
         />
         <Stat
           title="Payment failures"
-          value={String(data.ledger.filter((l) => l.status === 'FAILED').length)}
-          note="Recorded in the persistent ledger"
+          value={String(
+            (data.paymentHistory || []).filter((l) => l.status === 'FAILED').length +
+              (data.blockchain?.transactions.filter((t) => t.status === 'FAILED').length || 0),
+          )}
+          note="Recorded adapter and Testnet attempts"
           icon={<AlertTriangle size={19} />}
           color="purple"
         />
@@ -2677,6 +2695,20 @@ function Admin({
         )}
       </div>
       <div className="stack-top">
+        <Panel
+          title="Milestones with open disputes"
+          subtitle="Inspect criteria, private evidence versions, claims and reviewer assignment."
+        >
+          <DisputeList
+            data={data}
+            disputes={data.disputes.filter((d) => d.status === 'OPEN')}
+            dialog={dialog}
+            openProject={openProject}
+            onChange={refresh}
+          />
+        </Panel>
+        <RiskPolicyPanel data={data} onChange={refresh} />
+        <LegalOrdersPanel data={data} onChange={refresh} />
         <Panel
           title="Platform audit trail"
           subtitle="Administrative and financial actions are recorded alongside project events."
@@ -2861,6 +2893,10 @@ type DraftMilestone = {
   maxFileSize: string;
   revisionLimit: string;
   reviewHours: string;
+  requiredText?: string;
+  requiredFileName?: string;
+  minImageWidth?: string;
+  minImageHeight?: string;
 };
 function ProjectWizard({
   data,
@@ -2902,6 +2938,11 @@ function ProjectWizard({
     ),
     [milestones, setMilestones] = useState<DraftMilestone[]>([]),
     [scopeBusy, setScopeBusy] = useState(false),
+    [scopeReport, setScopeReport] = useState<{
+      id: number;
+      title: string;
+      advice: ScopeAdvice;
+    } | null>(null),
     [error, setError] = useState('');
   const isChain = financialMode === 'STELLAR_TESTNET';
   function wizardMoney(value: string) {
@@ -2912,6 +2953,7 @@ function ProjectWizard({
     }
   }
   function applyTemplate(name: string) {
+    setScopeReport(null);
     const t = templates[name];
     setCategory(name);
     setTitle(t.title);
@@ -2958,6 +3000,11 @@ function ProjectWizard({
         description: scope + ' ' + milestones[i].description,
       });
       updateMilestone(i, 'criteria', r.criteria.join('\n'));
+      setScopeReport((previous) => ({
+        id: (previous?.id || 0) + 1,
+        title: milestones[i].title,
+        advice: r,
+      }));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Unable to generate suggestions.');
     } finally {
@@ -3032,6 +3079,21 @@ function ProjectWizard({
             ...m,
             budget: isChain ? 1 : Math.round(Number(m.budget) * 100),
             ...(isChain ? { amountAtomic: parseXlm(m.budget) } : {}),
+            verificationRules: {
+              ...(m.requiredFileName?.trim()
+                ? { requiredFileName: m.requiredFileName.trim() }
+                : {}),
+              ...(m.requiredText?.trim()
+                ? {
+                    requiredText: m.requiredText
+                      .split('\n')
+                      .map((s) => s.trim())
+                      .filter(Boolean),
+                  }
+                : {}),
+              ...(m.minImageWidth ? { minImageWidth: Number(m.minImageWidth) } : {}),
+              ...(m.minImageHeight ? { minImageHeight: Number(m.minImageHeight) } : {}),
+            },
             criteria: m.criteria
               .split('\n')
               .map((s) => s.trim())
@@ -3103,6 +3165,7 @@ function ProjectWizard({
                       setFinancialMode(mode);
                       setBudget(mode === 'STELLAR_TESTNET' ? '3' : '12000');
                       setMilestones([]);
+                      setScopeReport(null);
                       setAcceptancePolicy(
                         mode === 'STELLAR_TESTNET'
                           ? 'Client reviews within 72 hours. Testnet XLM release requires explicit wallet authorization; time alone never pays.'
@@ -3260,6 +3323,14 @@ function ProjectWizard({
                 </strong>
               </span>
             </div>
+            {scopeReport && (
+              <ScopeAdvicePanel
+                key={scopeReport.id}
+                title={scopeReport.title}
+                advice={scopeReport.advice}
+                onUse={(value) => setScope((old) => old + '\n\nDeliverables:\n' + value)}
+              />
+            )}
             {milestones.map((m, i) => (
               <Panel
                 key={i}
@@ -3327,7 +3398,7 @@ function ProjectWizard({
                       <span>
                         <Sparkles size={18} />
                         <strong>Scope Doctor</strong>
-                        <small>Rule-based suggestions</small>
+                        <small>Editable advice · human approval required</small>
                       </span>
                       <Btn kind="secondary" disabled={scopeBusy} onClick={() => scopeDoctor(i)}>
                         {scopeBusy ? (
@@ -3350,6 +3421,47 @@ function ProjectWizard({
                       />
                     </Field>
                   </div>
+                  <details className="snapshot span-two">
+                    <summary>Objective verification rules (optional)</summary>
+                    <p>
+                      These rules become part of the mutual agreement. Literal text checks support
+                      UTF-8 .txt files up to 256 KiB; image dimensions require a valid PNG or JPEG.
+                      Semantic quality still needs human review.
+                    </p>
+                    <Field label={`Required text for milestone ${i + 1} — one phrase per line`}>
+                      <textarea
+                        value={m.requiredText || ''}
+                        maxLength={3000}
+                        rows={2}
+                        onChange={(e) => updateMilestone(i, 'requiredText', e.target.value)}
+                      />
+                    </Field>
+                    <Field label={`Required filename for milestone ${i + 1}`}>
+                      <input
+                        value={m.requiredFileName || ''}
+                        maxLength={150}
+                        onChange={(e) => updateMilestone(i, 'requiredFileName', e.target.value)}
+                      />
+                    </Field>
+                    <Field label={`Minimum image width for milestone ${i + 1}`}>
+                      <input
+                        type="number"
+                        min="1"
+                        max="16000"
+                        value={m.minImageWidth || ''}
+                        onChange={(e) => updateMilestone(i, 'minImageWidth', e.target.value)}
+                      />
+                    </Field>
+                    <Field label={`Minimum image height for milestone ${i + 1}`}>
+                      <input
+                        type="number"
+                        min="1"
+                        max="16000"
+                        value={m.minImageHeight || ''}
+                        onChange={(e) => updateMilestone(i, 'minImageHeight', e.target.value)}
+                      />
+                    </Field>
+                  </details>
                   <Field label="Allowed file extensions">
                     <input
                       required
@@ -3458,6 +3570,14 @@ function ProjectWizard({
                   <div className="detail-pair" key={i}>
                     <span>
                       {i + 1}. {m.title}
+                      {m.requiredText && <small>Agreed required text: {m.requiredText}</small>}
+                      {m.requiredFileName && <small>Agreed filename: {m.requiredFileName}</small>}
+                      {(m.minImageWidth || m.minImageHeight) && (
+                        <small>
+                          Minimum image: {m.minImageWidth || 'unspecified'} ×{' '}
+                          {m.minImageHeight || 'unspecified'} px
+                        </small>
+                      )}
                     </span>
                     <strong>
                       {wizardMoney(m.budget)} · {date(m.dueDate)}
@@ -3612,6 +3732,18 @@ function ActionDialog({
             <Field label="Repository or preview URL (optional)">
               <input name="url" type="url" placeholder="https://…" />
             </Field>
+            {data.ai?.evidenceTextAllowed && (
+              <label className="check-label">
+                <input
+                  type="checkbox"
+                  name="allowAiEvidence"
+                  value="true"
+                  disabled={data.ai.mode === 'Rule-based assistance'}
+                />
+                Allow optional AI review of up to 8,000 characters from this text file. This sends
+                the selected excerpt to the configured provider and does not authorize payment.
+              </label>
+            )}
             <div>
               <h4>Agreed acceptance criteria</h4>
               <ul className="criteria-list">

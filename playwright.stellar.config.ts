@@ -25,6 +25,10 @@ export default defineConfig({
     timeout: 120_000,
     env: {
       DEMO_MODE: 'true',
+      OPENAI_API_KEY: '',
+      OPENAI_MODEL: '',
+      AI_GATEWAY_API_KEY: '',
+      AI_MODEL: '',
       STELLAR_TESTNET_ENABLED: 'true',
       STELLAR_ESCROW_CONTRACT_ID: 'CDQODC2CCYGKCUKTXXN24BQK4GMKJLUK4QQOWKJP2POD5W3B5NDC27ID',
       DATABASE_PATH: path.join(directory, 'app.sqlite'),

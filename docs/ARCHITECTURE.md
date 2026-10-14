@@ -1,6 +1,7 @@
 # Architecture and trust boundaries
 
-MilestoneGuard is a single Next.js application using React, TypeScript, Node.js 24, and a persistent SQLite database. It runs without external database, AI, payment, or storage API keys. `LOCAL_DEMO` is explicit and uses simulated INR. Optional `STELLAR_TESTNET` projects use a separate asynchronous Soroban escrow adapter and exact Testnet XLM accounting. See [blockchain architecture and operation](BLOCKCHAIN.md). No mainnet, bank transfer or regulated escrow service is provided.
+> Updated readiness details: [current document](../ARCHITECTURE.md). The original walkthrough below remains useful for the preserved workflows.
+> MilestoneGuard is a single Next.js application using React, TypeScript, Node.js 24, and a persistent SQLite database. It runs without external database, AI, payment, or storage API keys. `LOCAL_DEMO` is explicit and uses simulated INR. Optional `STELLAR_TESTNET` projects use a separate asynchronous Soroban escrow adapter and exact Testnet XLM accounting. See [blockchain architecture and operation](BLOCKCHAIN.md). No mainnet, bank transfer or regulated escrow service is provided.
 
 ## Components
 

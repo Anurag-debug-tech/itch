@@ -1,0 +1,17 @@
+CREATE TABLE payment_events(id TEXT PRIMARY KEY,intentId TEXT NOT NULL REFERENCES payment_intents(id),phase TEXT NOT NULL CHECK(phase IN ('REQUESTED','CONFIRMED')),createdAt TEXT NOT NULL,UNIQUE(intentId,phase));
+CREATE UNIQUE INDEX one_simulated_intent_per_kind ON payment_intents(milestoneId,kind);
+CREATE TRIGGER immutable_payment_event_update BEFORE UPDATE ON payment_events BEGIN SELECT RAISE(ABORT,'Payment events are immutable'); END;
+CREATE TABLE payment_acknowledgements(id TEXT PRIMARY KEY,ledgerId TEXT REFERENCES ledger(id),chainTransactionId TEXT REFERENCES chain_transactions(id),actorId TEXT NOT NULL REFERENCES users(id),createdAt TEXT NOT NULL,CHECK((ledgerId IS NULL)<>(chainTransactionId IS NULL)));
+CREATE UNIQUE INDEX one_local_payment_ack ON payment_acknowledgements(ledgerId,actorId) WHERE ledgerId IS NOT NULL;
+CREATE UNIQUE INDEX one_chain_payment_ack ON payment_acknowledgements(chainTransactionId,actorId) WHERE chainTransactionId IS NOT NULL;
+CREATE TRIGGER immutable_payment_ack_update BEFORE UPDATE ON payment_acknowledgements BEGIN SELECT RAISE(ABORT,'Payment acknowledgements are immutable'); END;
+CREATE TABLE legal_orders(id TEXT PRIMARY KEY,projectId TEXT NOT NULL REFERENCES projects(id),recordedBy TEXT NOT NULL REFERENCES users(id),status TEXT NOT NULL CHECK(status IN ('UNVERIFIED','REVIEW_RECORDED','REJECTED')),createdAt TEXT NOT NULL,data TEXT NOT NULL CHECK(json_valid(data)));
+CREATE TABLE legal_order_executions(id TEXT PRIMARY KEY,orderId TEXT NOT NULL REFERENCES legal_orders(id),sourceRef TEXT NOT NULL UNIQUE,amountMinor TEXT NOT NULL,outcome TEXT NOT NULL CHECK(outcome IN ('RELEASE','REFUND')),recordedBy TEXT NOT NULL REFERENCES users(id),createdAt TEXT NOT NULL);
+CREATE TRIGGER immutable_legal_execution_update BEFORE UPDATE ON legal_order_executions BEGIN SELECT RAISE(ABORT,'Execution history is immutable'); END;
+CREATE INDEX legal_order_project ON legal_orders(projectId);
+CREATE INDEX agreement_project_version ON agreements(projectId,json_extract(data,'$.version'));
+CREATE INDEX dispute_project_status ON disputes(projectId,json_extract(data,'$.status'));
+CREATE INDEX recovery_project_status ON recoveries(projectId,json_extract(data,'$.status'));
+CREATE INDEX audit_project_recent ON audit(projectId,json_extract(data,'$.createdAt'),id);
+CREATE INDEX audit_project_action ON audit(projectId,json_extract(data,'$.action'));
+CREATE INDEX notification_user_recent ON notifications(userId,json_extract(data,'$.createdAt'),id);

@@ -67,7 +67,7 @@ it('upgrades an unversioned database without changing existing financial records
     reference: 'legacy-reference',
     data: '{"status":"SIMULATED_CONFIRMED"}',
   });
-  expect(db.prepare('SELECT name FROM schema_migrations ORDER BY name').all()).toHaveLength(2);
+  expect(db.prepare('SELECT name FROM schema_migrations ORDER BY name').all()).toHaveLength(3);
   closeDb();
   expect(getDb().prepare('SELECT count(*) AS n FROM ledger').get()).toEqual({ n: 1 });
 });

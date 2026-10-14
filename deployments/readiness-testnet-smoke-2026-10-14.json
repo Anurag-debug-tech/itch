@@ -1,0 +1,142 @@
+{
+  "network": "STELLAR_TESTNET",
+  "contractId": "CDQODC2CCYGKCUKTXXN24BQK4GMKJLUK4QQOWKJP2POD5W3B5NDC27ID",
+  "startedAt": "2026-10-14T07:12:05.564Z",
+  "database": "data/testnet-smoke/2026-10-14T07-12-05-563Z/app.sqlite",
+  "signing": "Disposable CLI fixture keys; real Freighter extension not exercised",
+  "wallets": {
+    "Client": "GDLEVBALUP7LSFHUQHZY24N2AHGLX47KP4KBAKZLXYJX6Z6IJJ45IGS4",
+    "Worker": "GBYK3S7CWT7VAOYTOYV3EKVWJRR3QB6QQRM26ADU3EB6IUS6XESRL6WT",
+    "Resolver": "GCD5Q6DKZHDEYZ2REM2U3Y2L5TRCBVNFB544PZFK7FRCFTIZSRNJRGBE",
+    "Replacement": "GC2R4OLB2L4JD2EZEW4ZEJDG6DP5YO5MSUA5ZMAZDM2OT73XCL4HIJVY"
+  },
+  "transactions": [
+    {
+      "method": "create_agreement",
+      "hash": "d76716c412800dff8859c0dc9668d27922ef5b247aa3422a62c0d27705b9b35d",
+      "ledger": 5187674,
+      "escrowRef": "3c3d236b-0914-46a3-8608-d63467669e23",
+      "explorer": "https://stellar.expert/explorer/testnet/tx/d76716c412800dff8859c0dc9668d27922ef5b247aa3422a62c0d27705b9b35d"
+    },
+    {
+      "method": "accept_agreement",
+      "hash": "07303947caffbd027bc6d85c1ca4c3d243a89fc98007eedc5131ba864954f427",
+      "ledger": 5187675,
+      "escrowRef": "3c3d236b-0914-46a3-8608-d63467669e23",
+      "explorer": "https://stellar.expert/explorer/testnet/tx/07303947caffbd027bc6d85c1ca4c3d243a89fc98007eedc5131ba864954f427"
+    },
+    {
+      "method": "fund_milestone",
+      "hash": "1d8592e8e3d43d476008447a740af682f5b4091aa6fcbdd8300b80569a0ea880",
+      "ledger": 5187677,
+      "escrowRef": "3c3d236b-0914-46a3-8608-d63467669e23",
+      "explorer": "https://stellar.expert/explorer/testnet/tx/1d8592e8e3d43d476008447a740af682f5b4091aa6fcbdd8300b80569a0ea880"
+    },
+    {
+      "method": "fund_milestone",
+      "hash": "5ee0db63a091a262405140b963589fd2a8a5b9f9ab5a4617262e01802364c749",
+      "ledger": 5187679,
+      "escrowRef": "3c3d236b-0914-46a3-8608-d63467669e23",
+      "explorer": "https://stellar.expert/explorer/testnet/tx/5ee0db63a091a262405140b963589fd2a8a5b9f9ab5a4617262e01802364c749"
+    },
+    {
+      "method": "fund_milestone",
+      "hash": "20d86c8cd948de256144594c4015e0306f5e4e54e33cdcf4095d8d78dd023b35",
+      "ledger": 5187681,
+      "escrowRef": "3c3d236b-0914-46a3-8608-d63467669e23",
+      "explorer": "https://stellar.expert/explorer/testnet/tx/20d86c8cd948de256144594c4015e0306f5e4e54e33cdcf4095d8d78dd023b35"
+    },
+    {
+      "method": "submit_work",
+      "hash": "6ae11e8091b0a833a701dc48b36808674547b7274335c4b9a847675f99ce83fd",
+      "ledger": 5187683,
+      "escrowRef": "3c3d236b-0914-46a3-8608-d63467669e23",
+      "explorer": "https://stellar.expert/explorer/testnet/tx/6ae11e8091b0a833a701dc48b36808674547b7274335c4b9a847675f99ce83fd"
+    },
+    {
+      "method": "approve_and_release",
+      "hash": "5c564e003b81e4c6d6ff44e22edc4bafd991973b0501b56895dd6d5ae933455f",
+      "ledger": 5187685,
+      "escrowRef": "3c3d236b-0914-46a3-8608-d63467669e23",
+      "explorer": "https://stellar.expert/explorer/testnet/tx/5c564e003b81e4c6d6ff44e22edc4bafd991973b0501b56895dd6d5ae933455f"
+    },
+    {
+      "method": "submit_work",
+      "hash": "bc140f09448e7dc087ba96f8caa21fca4feceb12be4c0f01f94d320240416958",
+      "ledger": 5187687,
+      "escrowRef": "3c3d236b-0914-46a3-8608-d63467669e23",
+      "explorer": "https://stellar.expert/explorer/testnet/tx/bc140f09448e7dc087ba96f8caa21fca4feceb12be4c0f01f94d320240416958"
+    },
+    {
+      "method": "raise_dispute",
+      "hash": "af511b64ef4ac2b8217343d04815a6698c7b12dd3913cec901e32cc26a999eeb",
+      "ledger": 5187689,
+      "escrowRef": "3c3d236b-0914-46a3-8608-d63467669e23",
+      "explorer": "https://stellar.expert/explorer/testnet/tx/af511b64ef4ac2b8217343d04815a6698c7b12dd3913cec901e32cc26a999eeb"
+    },
+    {
+      "method": "resolve_dispute",
+      "hash": "86c4af7c6ceeed10e52d9d1aeb38f8b6fb139e0b5e6f0f6bd70cac07ae4b8703",
+      "ledger": 5187691,
+      "escrowRef": "3c3d236b-0914-46a3-8608-d63467669e23",
+      "explorer": "https://stellar.expert/explorer/testnet/tx/86c4af7c6ceeed10e52d9d1aeb38f8b6fb139e0b5e6f0f6bd70cac07ae4b8703"
+    },
+    {
+      "method": "create_agreement",
+      "hash": "2118d7a2451fe90e874f3e1bb979f91eec2bec5ada92347670a06b6bad541468",
+      "ledger": 5187693,
+      "escrowRef": "fd8f36df-7ef2-4e20-8bf1-ea6333feff41",
+      "explorer": "https://stellar.expert/explorer/testnet/tx/2118d7a2451fe90e874f3e1bb979f91eec2bec5ada92347670a06b6bad541468"
+    },
+    {
+      "method": "accept_agreement",
+      "hash": "1200687cfa95af3c080df28ee1e401b508725a8a86e6391738fc2f7ae101bee0",
+      "ledger": 5187695,
+      "escrowRef": "fd8f36df-7ef2-4e20-8bf1-ea6333feff41",
+      "explorer": "https://stellar.expert/explorer/testnet/tx/1200687cfa95af3c080df28ee1e401b508725a8a86e6391738fc2f7ae101bee0"
+    },
+    {
+      "method": "raise_dispute",
+      "hash": "d6cdf1ce4d34f4afdf7d83557e8153c8b08999286312185beeacedda9fa458d7",
+      "ledger": 5187697,
+      "escrowRef": "3c3d236b-0914-46a3-8608-d63467669e23",
+      "explorer": "https://stellar.expert/explorer/testnet/tx/d6cdf1ce4d34f4afdf7d83557e8153c8b08999286312185beeacedda9fa458d7"
+    },
+    {
+      "method": "refund_authorized",
+      "hash": "4582a034e1635274dd47c44d8c20d4b2acad180a910d58a9501a3887b4e86a04",
+      "ledger": 5187699,
+      "escrowRef": "3c3d236b-0914-46a3-8608-d63467669e23",
+      "explorer": "https://stellar.expert/explorer/testnet/tx/4582a034e1635274dd47c44d8c20d4b2acad180a910d58a9501a3887b4e86a04"
+    },
+    {
+      "method": "fund_milestone",
+      "hash": "ea2104cff2a6a11d1c0b5a10fb9c2465b32bf5db14d85600d7f1ee2f4de67c70",
+      "ledger": 5187701,
+      "escrowRef": "fd8f36df-7ef2-4e20-8bf1-ea6333feff41",
+      "explorer": "https://stellar.expert/explorer/testnet/tx/ea2104cff2a6a11d1c0b5a10fb9c2465b32bf5db14d85600d7f1ee2f4de67c70"
+    },
+    {
+      "method": "submit_work",
+      "hash": "b77643c8bbd0222a558ef0404ffe4e326639ca9fd6083ce11391c20b21f1b783",
+      "ledger": 5187703,
+      "escrowRef": "fd8f36df-7ef2-4e20-8bf1-ea6333feff41",
+      "explorer": "https://stellar.expert/explorer/testnet/tx/b77643c8bbd0222a558ef0404ffe4e326639ca9fd6083ce11391c20b21f1b783"
+    },
+    {
+      "method": "approve_and_release",
+      "hash": "aa212e6862644c161cf21bd988e3127635b64d93807f89749baba2da009fefee",
+      "ledger": 5187705,
+      "escrowRef": "fd8f36df-7ef2-4e20-8bf1-ea6333feff41",
+      "explorer": "https://stellar.expert/explorer/testnet/tx/aa212e6862644c161cf21bd988e3127635b64d93807f89749baba2da009fefee"
+    }
+  ],
+  "assertions": [
+    "Confirmed normal release; duplicate payout rejected",
+    "Dispute blocked ordinary payout; designated resolver release confirmed",
+    "Ghosting/recovery/new escrow left original funded entitlement unchanged",
+    "Explicit refund and replacement payout confirmed; exact conservation; simulated ledger unchanged"
+  ],
+  "status": "PASSED",
+  "finishedAt": "2026-10-14T07:15:17.475Z"
+}

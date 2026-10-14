@@ -1,12 +1,21 @@
 import type { NextConfig } from 'next';
 const config: NextConfig = {
-  serverExternalPackages: ['node:sqlite'],
+  serverExternalPackages: ['node:sqlite', 'sharp', 'pdf-lib'],
   poweredByHeader: false,
   // Runtime credentials and private evidence belong to the host, never the build artifact.
   outputFileTracingExcludes: {
     '/*': ['./data/**/*', './.env*', './test-results/**/*', './playwright-report/**/*'],
   },
-  outputFileTracingIncludes: { '/api/*': ['./migrations/*.sql'] },
+  outputFileTracingIncludes: {
+    '/api/*': ['./migrations/*.sql'],
+    '/api/uploads': [
+      './scripts/verify-pdf.cjs',
+      './node_modules/pdf-lib/**/*',
+      './node_modules/@pdf-lib/**/*',
+      './node_modules/pako/**/*',
+      './node_modules/tslib/**/*',
+    ],
+  },
   async headers() {
     return [
       {

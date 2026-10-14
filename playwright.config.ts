@@ -26,6 +26,10 @@ export default defineConfig({
     timeout: 120_000,
     env: {
       STELLAR_TESTNET_ENABLED: 'false',
+      OPENAI_API_KEY: '',
+      OPENAI_MODEL: '',
+      AI_GATEWAY_API_KEY: '',
+      AI_MODEL: '',
       DEMO_MODE: 'true',
       APP_ORIGIN: 'http://127.0.0.1:3100',
       DATABASE_PATH: path.resolve('data/e2e.sqlite'),

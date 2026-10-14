@@ -26,6 +26,13 @@ export type Project = {
   status: string;
   risk: string;
   riskReasons: string[];
+  riskSignals?: {
+    rule: string;
+    activityAt: string;
+    thresholdHours: number;
+    milestoneId?: string;
+    explanation: string;
+  }[];
   lastActivityAt: string;
   createdAt: string;
 };
@@ -37,6 +44,12 @@ export type Milestone = {
   requirements: string;
   budget: number;
   amountAtomic?: string;
+  verificationRules?: {
+    requiredFileName?: string;
+    requiredText?: string[];
+    minImageWidth?: number;
+    minImageHeight?: number;
+  };
   fundedAtomic?: string;
   paidAtomic?: string;
   refundedAtomic?: string;
@@ -84,6 +97,9 @@ export type Submission = {
     checks: { name: string; result: string; explanation: string }[];
     criteria: { criterion: string; result: string; explanation: string }[];
     source: string;
+    objective?: { name: string; result: string; explanation: string; reference: string }[];
+    facts?: { width?: number; height?: number; pages?: number; textInspected: boolean };
+    aiTextShared?: boolean;
   };
   createdAt: string;
 };
@@ -106,6 +122,10 @@ export type Dispute = {
   status: string;
   outcome?: string;
   rationale?: string;
+  assignedReviewerId?: string;
+  assignedAt?: string;
+  resolvedBy?: string;
+  resolvedAt?: string;
   statements: { userId: string; text: string; createdAt: string }[];
   createdAt: string;
 };
@@ -157,6 +177,15 @@ export type Bootstrap = {
   audit: Audit[];
   now: string;
   demoMode: boolean;
+  paymentHistory?: import('../lib/payment-history').PaymentRecord[];
+  legalOrders?: LegalOrder[];
+  riskPolicy?: {
+    checkinHours: number;
+    attentionHours: number;
+    riskHours: number;
+    deadlineGraceHours: number;
+  };
+  ai?: { mode: string; evidenceTextAllowed: boolean };
   blockchain?: {
     enabled: boolean;
     configured: boolean;
@@ -166,6 +195,39 @@ export type Bootstrap = {
     milestones: ChainMilestone[];
     transactions: ChainTransaction[];
   };
+};
+export type LegalOrder = {
+  id: string;
+  projectId: string;
+  status: string;
+  recordedBy: string;
+  createdAt: string;
+  reference: string;
+  authority: string;
+  documentReference: string;
+  receivedAt: string;
+  scope: string;
+  milestoneIds: string[];
+  outcomes: string[];
+  maxAmountMinor: string;
+  currency: string;
+  fictional: boolean;
+  authenticationStatus: string;
+  review: null | {
+    reviewerName: string;
+    recordedBy: string;
+    recordedAt: string;
+    verdict: string;
+    authenticationBasis: string;
+    jurisdictionAndScope: string;
+  };
+  executions: {
+    id: string;
+    sourceRef: string;
+    amountMinor: string;
+    outcome: string;
+    createdAt: string;
+  }[];
 };
 export type ChainEscrow = {
   id: string;

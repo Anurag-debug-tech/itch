@@ -8,7 +8,9 @@ A full-stack freelancer accountability demonstration with versioned mutual agree
 
 ## Verified status
 
-The local hackathon workflows remain verified. The integration has 56 passing Vitest tests, 28 passing Soroban tests and six passing original Playwright workflows on both development and production servers. A real Testnet smoke run confirmed 17 transactions covering payout, dispute release/refund and replacement isolation. Two production browser Testnet checks passed, using an explicit extension transport fixture for signing. Actual Freighter popup signing remains unverified because Freighter is absent in the inspected Chrome profile. See [actual results](docs/VERIFICATION.md), [blockchain setup and walkthrough](docs/BLOCKCHAIN.md), and [progress](BLOCKCHAIN_PROGRESS.md).
+The readiness pass adds structural/objective evidence checks, payment receipts and timelines, configurable risk rules, admin dispute review, optional direct OpenAI and a non-executing legal-order register. **78 Vitest tests and 28 Soroban tests pass**; production browser results and precise external limits are in [verification](docs/VERIFICATION.md). No percentage or public production-readiness claim is made. Real Freighter popup signing and live AI with owner credentials remain unverified.
+
+Start with the [complete A–M demonstration](DEMO_GUIDE.md), [MVP status](MVP_STATUS.md), [architecture](ARCHITECTURE.md), [audit](AUDIT_REPORT.md), [legal/payment readiness](LEGAL_AND_PAYMENT_READINESS.md) and [26 judge answers](JUDGE_QA.md).
 
 The Testnet contract is `CDQODC2CCYGKCUKTXXN24BQK4GMKJLUK4QQOWKJP2POD5W3B5NDC27ID`. [View deployment](https://stellar.expert/explorer/testnet/tx/142e2bcf4471b33426772824168efecd615c7813949635879e8e16e5b61bb16f). Public network/asset/version details and transaction proof are in `deployments/`.
 
@@ -26,7 +28,7 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000). `setup` creates `.env.local` once with random local secrets and private filesystem permissions. Existing configuration is preserved. It does not create a cloud database or live payment account. Keep `.env.local`, `data/`, and uploaded files out of source control.
 
-To configure manually, copy `.env.example` to `.env.local`, explicitly enable `DEMO_MODE=true`, and set the database, upload directory, and origin. The adapter requires an explicit demo or Testnet flag; it never silently enables either. For Testnet, follow [the separate-storage configuration](docs/BLOCKCHAIN.md). On the current development machine that configuration is already present, and the original database/uploads remain preserved.
+To configure manually, copy `.env.example` to `.env.local`, explicitly enable `DEMO_MODE=true`, and set the database, upload directory, and origin. The database requires an explicit demo or Testnet flag; it never silently enables either. For Testnet, follow [the separate-storage configuration](docs/BLOCKCHAIN.md). On the current development machine that configuration is already present, and the original database/uploads remain preserved.
 
 ## Demo access
 
@@ -89,8 +91,12 @@ The optional blockchain checks are `npm run test:contract`, `npm run test:stella
 | `contracts/`   | Pinned Rust Soroban escrow and security/lifecycle tests                                           |
 | `deployments/` | Public Testnet deployment configuration and confirmed transaction proof                           |
 
-Read the [four-scenario demo guide](docs/DEMO.md), [architecture](docs/ARCHITECTURE.md), [security checklist](docs/SECURITY.md), and [deployment guide](docs/DEPLOYMENT.md).
+Read the [full demo guide](DEMO_GUIDE.md), [architecture](ARCHITECTURE.md), [security checklist](docs/SECURITY.md), and [deployment guide](docs/DEPLOYMENT.md).
 
 ## Boundaries
 
 This implementation is designed for a hackathon demonstration. Actual Freighter wallet setup remains required. On-chain settlements support full release or full refund; split settlements remain local-demo-only. Multisig/smart wallets, a historical indexer and automated archived-state restoration are outside scope. It has no mainnet/live INR payments, Supabase adapter, production identity verification, external email delivery, or malware scanning service. It must run on a persistent Node host with a writable volume; stateless serverless hosting does not fit the local storage adapter. No production-readiness or independent contract-audit claim is made.
+
+## Optional AI
+
+No key is needed for the complete rule-based workflow. For direct OpenAI, set private `OPENAI_API_KEY` and explicit `OPENAI_MODEL`; for the existing gateway set `AI_GATEWAY_API_KEY` and `AI_MODEL`. Restart the server. No paid model is chosen automatically. Scope Doctor proposals remain editable and disputes remain human decisions. Evidence text sharing additionally requires `AI_ALLOW_EVIDENCE_TEXT=true` and the uploader's consent; only a supported text excerpt up to 8,000 characters is selected. Metadata/claims may be shared when optional assistance is configured. Timeouts, invalid outputs and unsupported evidence fall back to rules. Provider tests are mocked; live API success is not claimed. See [privacy and provider controls](LEGAL_AND_PAYMENT_READINESS.md).

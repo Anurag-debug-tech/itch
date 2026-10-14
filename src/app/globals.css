@@ -278,6 +278,9 @@ code {
   align-items: center;
   gap: 12px;
 }
+.readiness-panel {
+  overflow-wrap: anywhere;
+}
 .align-right {
   text-align: right;
 }

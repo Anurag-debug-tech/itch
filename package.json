@@ -19,17 +19,20 @@
     "setup": "node --import tsx scripts/setup.ts",
     "jobs": "node --import tsx scripts/jobs.ts",
     "jobs:watch": "node --import tsx scripts/jobs.ts --watch",
-    "format": "prettier --write src scripts tests docs deployments *.ts *.mjs *.json README.md BUILD_PROGRESS.md BLOCKCHAIN_PROGRESS.md",
-    "format:check": "prettier --check src scripts tests docs deployments *.ts *.mjs *.json README.md BUILD_PROGRESS.md BLOCKCHAIN_PROGRESS.md"
+    "format": "prettier --write src scripts tests docs deployments *.ts *.mjs *.json *.md",
+    "format:check": "prettier --check src scripts tests docs deployments *.ts *.mjs *.json *.md"
   },
   "dependencies": {
+    "@ai-sdk/openai": "4.0.93",
     "@stellar/freighter-api": "6.0.1",
     "@stellar/stellar-sdk": "17.2.0",
     "ai": "^7.0.138",
     "lucide-react": "^0.468.0",
     "next": "^16.0.0",
+    "pdf-lib": "1.17.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "sharp": "0.35.5",
     "zod": "^4.0.0"
   },
   "devDependencies": {

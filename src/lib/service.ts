@@ -1,11 +1,17 @@
 import { randomUUID, createHash } from 'node:crypto';
 import { all, get, put, getDb, transaction, demoMode, type Row } from './db';
-import { assert } from './errors';
+import { assert, AppError } from './errors';
 import { publicUser, type User } from './auth';
 import { paymentAdapter } from './payments';
 import { atomic } from './stellar/amounts';
 import { chainReadModel } from './stellar/store';
 import { enabled as stellarEnabled } from './stellar/config';
+import { completeProjectIfReady } from './completion';
+import { acknowledgePayment, paymentHistory } from './payment-history';
+import { assertObjectiveReviewable, verificationRules } from './verification';
+import { evaluateRisk, normalizedRisk, parseRiskPolicy, readRiskPolicy } from './risk';
+import { aiMode } from './ai';
+import { legalOrders } from './legal-orders';
 export { now } from './time';
 import { now } from './time';
 const stamp = () => now();
@@ -69,6 +75,16 @@ export function notify(p: Row, message: string) {
 export function meaningfulActivity(p: Row) {
   p.lastActivityAt = stamp();
   p.missedCheckins = 0;
+  if (p.status === 'ACTIVE')
+    Object.assign(
+      p,
+      evaluateRisk(
+        p,
+        all('milestones').filter((m) => m.projectId === p.id),
+        stamp(),
+        readRiskPolicy(),
+      ),
+    );
   put('projects', p);
 }
 function active(p: Row) {
@@ -119,6 +135,7 @@ export function snapshot(p: Row, ms: Row[]) {
       reviewHours: m.reviewHours,
       assignedFreelancerId: m.assignedFreelancerId,
       ...(m.amountAtomic ? { amountAtomic: m.amountAtomic } : {}),
+      ...(m.verificationRules ? { verificationRules: m.verificationRules } : {}),
     })),
   };
 }
@@ -180,7 +197,7 @@ function createProject(user: User, b: Row) {
     acceptancePolicy: text(b.acceptancePolicy, 'Acceptance policy'),
     disputePolicy: text(b.disputePolicy, 'Dispute policy'),
     status: 'AWAITING_AGREEMENT',
-    risk: 'HEALTHY',
+    risk: 'ON_TRACK',
     riskReasons: [],
     lastActivityAt: stamp(),
     createdAt: stamp(),
@@ -220,6 +237,7 @@ function createProject(user: User, b: Row) {
       requirements: text(v.requirements, 'Requirements'),
       budget: chain ? 1 : number(v.budget, 'Milestone budget'),
       ...(chain ? { amountAtomic: atomic(v.amountAtomic) } : {}),
+      verificationRules: verificationRules(v.verificationRules),
       dueDate: date(v.dueDate, 'milestone due date'),
       criteria: v.criteria.map((c: unknown) => text(c, 'Criterion', 500)),
       allowedTypes: v.allowedTypes.map((t: string) => t.replace(/^\./, '').toLowerCase()),
@@ -274,12 +292,7 @@ function payout(m: Row) {
   m = get('milestones', m.id)!;
   m.status = 'RELEASED';
   put('milestones', m);
-  const p = get('projects', m.projectId)!;
-  const ms = all('milestones').filter((v) => v.projectId === p.id && !v.archived);
-  if (ms.every((v) => v.status === 'RELEASED')) {
-    p.status = 'COMPLETED';
-    put('projects', p);
-  }
+  completeProjectIfReady(m.projectId);
 }
 export function bootstrap(user: User) {
   const projects = all('projects').filter(
@@ -293,7 +306,8 @@ export function bootstrap(user: User) {
   const data: Row = {
     user,
     projects: projects.map((p) => {
-      if (user.role === 'ADMIN' || p.clientId === user.id || p.freelancerId === user.id) return p;
+      if (user.role === 'ADMIN' || p.clientId === user.id || p.freelancerId === user.id)
+        return { ...p, risk: normalizedRisk(p.risk, p.status) };
       const old = all('agreements')
         .filter((a) => a.projectId === p.id && a.snapshot.project.freelancerId === user.id)
         .sort((a, b) => b.version - a.version)[0];
@@ -301,6 +315,7 @@ export function bootstrap(user: User) {
         ...p,
         ...old?.snapshot.project,
         status: 'RECOVERY_PENDING',
+        risk: 'RECOVERY_INITIATED',
         riskReasons: ['Your original engagement is in recovery.'],
       };
     }),
@@ -316,6 +331,8 @@ export function bootstrap(user: User) {
       .map(publicUser),
     now: now(),
     demoMode: demoMode(),
+    riskPolicy: readRiskPolicy(),
+    ai: { mode: aiMode(), evidenceTextAllowed: process.env.AI_ALLOW_EVIDENCE_TEXT === 'true' },
   };
   function permitted(r: Row, table: string) {
     const p = byId.get(r.projectId);
@@ -349,7 +366,6 @@ export function bootstrap(user: User) {
     'disputes',
     'recoveries',
     'checkins',
-    'audit',
   ])
     data[table] = all(table)
       .filter((r) => permitted(r, table))
@@ -359,7 +375,10 @@ export function bootstrap(user: User) {
         return clean;
       });
   data.notifications = all('notifications').filter((r) => r.userId === user.id);
+  data.audit = auditPage(user, { limit: 100 }).items;
   data.blockchain = chainReadModel(user.id, new Set(projects.map((p) => p.id)));
+  data.paymentHistory = paymentHistory(user, new Set(projects.map((p) => p.id)));
+  data.legalOrders = legalOrders(user);
   for (const m of data.milestones) {
     if (!m.amountAtomic) continue;
     const confirmed = data.blockchain.milestones.find((r: Row) => r.milestoneId === m.id);
@@ -368,6 +387,62 @@ export function bootstrap(user: User) {
     m.refundedAtomic = confirmed?.refunded || '0';
   }
   return data;
+}
+export function auditPage(
+  user: User,
+  input: { projectId?: string; cursor?: string; limit?: number } = {},
+) {
+  const limit = input.limit ?? 25;
+  assert(Number.isInteger(limit) && limit >= 1 && limit <= 100, 'History page size must be 1–100');
+  if (input.projectId) projectFor(user, input.projectId);
+  const conditions: string[] = [],
+    params: (string | number)[] = [];
+  if (user.role !== 'ADMIN') {
+    conditions.push(
+      "EXISTS(SELECT 1 FROM projects p WHERE p.id=a.projectId AND (p.clientId=? OR ((p.freelancerId=? OR EXISTS(SELECT 1 FROM json_each(p.data,'$.priorFreelancerIds') j WHERE j.value=?)) AND (json_extract(a.data,'$.actorId')=? OR (p.freelancerId=? AND COALESCE(json_array_length(json_extract(p.data,'$.priorFreelancerIds')),0)=0)))))",
+    );
+    params.push(user.id, user.id, user.id, user.id, user.id);
+  }
+  if (input.projectId) {
+    conditions.push('a.projectId=?');
+    params.push(input.projectId);
+  }
+  if (input.cursor) {
+    let cursor: { time: string; id: string };
+    try {
+      assert(input.cursor.length <= 512 && /^[A-Za-z0-9_-]+$/.test(input.cursor), 'Invalid cursor');
+      cursor = JSON.parse(Buffer.from(input.cursor, 'base64url').toString('utf8'));
+      assert(
+        typeof cursor.id === 'string' &&
+          cursor.id.length <= 100 &&
+          typeof cursor.time === 'string' &&
+          new Date(cursor.time).toISOString() === cursor.time,
+        'Invalid cursor',
+      );
+    } catch {
+      throw new AppError('Invalid history cursor');
+    }
+    conditions.push(
+      "(json_extract(a.data,'$.createdAt')<? OR (json_extract(a.data,'$.createdAt')=? AND a.id<?))",
+    );
+    params.push(cursor.time, cursor.time, cursor.id);
+  }
+  const rows = getDb()
+    .prepare(
+      `SELECT a.* FROM audit a ${conditions.length ? 'WHERE ' + conditions.join(' AND ') : ''} ORDER BY json_extract(a.data,'$.createdAt') DESC,a.id DESC LIMIT ?`,
+    )
+    .all(...params, limit + 1) as Row[];
+  const items = rows
+    .slice(0, limit)
+    .map((r) => ({ ...JSON.parse(r.data), id: r.id, projectId: r.projectId }));
+  const last = items.at(-1);
+  return {
+    items,
+    nextCursor:
+      rows.length > limit && last
+        ? Buffer.from(JSON.stringify({ time: last.createdAt, id: last.id })).toString('base64url')
+        : null,
+  };
 }
 export function action(user: User, b: Row): Row {
   assert(b && typeof b === 'object', 'Invalid action');
@@ -379,6 +454,18 @@ export function action(user: User, b: Row): Row {
   return transaction(() => perform(user, b));
 }
 function perform(user: User, b: Row): Row {
+  if (b.type === 'acknowledgePayment') return acknowledgePayment(user, String(b.reference));
+  if (b.type === 'updateRiskPolicy') {
+    admin(user);
+    const policy = parseRiskPolicy(b.policy);
+    getDb()
+      .prepare(
+        "INSERT INTO settings VALUES ('riskPolicy',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+      )
+      .run(JSON.stringify(policy));
+    audit(null, user.id, 'RISK_POLICY_UPDATED', policy);
+    return { ok: true };
+  }
   if (b.type === 'createProject') return { ok: true, ...createProject(user, b) };
   if (b.type === 'updateProfile') {
     const name = text(b.name, 'Name', 100);
@@ -417,11 +504,33 @@ function perform(user: User, b: Row): Row {
     admin(user);
     return { ok: true, ...runJobsInternal() };
   }
-  if (b.type === 'statement' || b.type === 'resolve') {
+  if (b.type === 'statement' || b.type === 'resolve' || b.type === 'assignDispute') {
     const d = get('disputes', b.disputeId);
     assert(d, 'Dispute not found', 404);
     const p = projectFor(user, d.projectId);
     assert(d.status === 'OPEN', 'Dispute is already resolved', 409);
+    if (b.type === 'assignDispute') {
+      admin(user);
+      assert(
+        getDb()
+          .prepare("SELECT id FROM users WHERE id=? AND role='ADMIN'")
+          .get(String(b.reviewerId)),
+        'Choose an administrator reviewer',
+      );
+      assert(
+        p.financialMode !== 'STELLAR_TESTNET' || b.reviewerId === p.resolverUserId,
+        'Testnet disputes retain their designated resolver',
+        409,
+      );
+      d.assignedReviewerId = b.reviewerId;
+      d.assignedAt = stamp();
+      put('disputes', d);
+      audit(p.id, user.id, 'DISPUTE_REVIEWER_ASSIGNED', {
+        disputeId: d.id,
+        reviewerId: b.reviewerId,
+      });
+      return { ok: true };
+    }
     if (b.type === 'statement') {
       const disputed = get('milestones', d.milestoneId)!;
       assert(
@@ -441,6 +550,11 @@ function perform(user: User, b: Row): Row {
       p.financialMode !== 'STELLAR_TESTNET',
       'Use the designated resolver wallet for on-chain settlement',
       409,
+    );
+    assert(
+      !d.assignedReviewerId || d.assignedReviewerId === user.id,
+      'The assigned reviewer must record this resolution',
+      403,
     );
     return resolveDispute(user, d, p, b);
   }
@@ -480,7 +594,7 @@ function perform(user: User, b: Row): Row {
         .toString();
     p.startDate = stamp();
     p.deadline = new Date(Date.parse(stamp()) + 30 * 86400000).toISOString();
-    p.risk = 'HEALTHY';
+    p.risk = 'ON_TRACK';
     delete p.withdrawalRequestedAt;
     delete p.withdrawalReason;
     delete p.interventionAt;
@@ -602,6 +716,7 @@ function perform(user: User, b: Row): Row {
           if (current.status === 'AWAITING_AGREEMENT') current.status = 'AWAITING_FUNDING';
           put('milestones', current);
         }
+        meaningfulActivity(p);
         for (const recovery of all('recoveries').filter((r) => r.agreementId === a.id)) {
           recovery.status = 'RESUMED';
           put('recoveries', recovery);
@@ -700,6 +815,10 @@ function perform(user: User, b: Row): Row {
         'Evidence is required',
       );
       if (b.decision === 'ACCEPT') {
+        const latest = all('submissions')
+          .filter((s) => s.milestoneId === m.id)
+          .sort((a, b) => b.version - a.version)[0];
+        assertObjectiveReviewable(latest);
         m.status = 'ACCEPTED';
         m.acceptedAt = stamp();
         m.acceptedBy = user.id;
@@ -820,8 +939,15 @@ function perform(user: User, b: Row): Row {
       const reason = text(b.reason, 'Withdrawal reason');
       p.withdrawalRequestedAt = stamp();
       p.withdrawalReason = reason;
-      p.risk = 'AT_RISK';
-      p.riskReasons = ['Freelancer requested withdrawal'];
+      Object.assign(
+        p,
+        evaluateRisk(
+          p,
+          all('milestones').filter((m) => m.projectId === p.id),
+          stamp(),
+          readRiskPolicy(),
+        ),
+      );
       put('projects', p);
       audit(p.id, user.id, 'WITHDRAWAL_REQUESTED', reason);
       notify(p, 'Freelancer requested withdrawal. Client can initiate recovery.');
@@ -895,6 +1021,7 @@ function perform(user: User, b: Row): Row {
       };
       put('recoveries', r);
       p.status = 'RECOVERY_PENDING';
+      p.risk = 'RECOVERY_INITIATED';
       put('projects', p);
       for (const current of milestones.filter(
         (m) => !['ACCEPTED', 'RELEASED', 'REFUNDED', 'CANCELLED', 'SETTLED'].includes(m.status),
@@ -1008,6 +1135,7 @@ function resolveDispute(user: User, d: Row, p: Row, b: Row) {
     updated.revisionCount++;
   }
   put('milestones', updated);
+  completeProjectIfReady(p.id);
   audit(p.id, user.id, 'DISPUTE_RESOLVED', {
     disputeId: d.id,
     outcome,
@@ -1019,7 +1147,9 @@ function resolveDispute(user: User, d: Row, p: Row, b: Row) {
   return { ok: true, dispute: d };
 }
 function once(p: Row, key: string, message: string) {
-  const exists = all('audit').some((a) => a.projectId === p.id && a.action === key);
+  const exists = getDb()
+    .prepare("SELECT id FROM audit WHERE projectId=? AND json_extract(data,'$.action')=? LIMIT 1")
+    .get(p.id, key);
   if (!exists) {
     audit(p.id, 'system', key, message);
     notify(p, message);
@@ -1027,43 +1157,37 @@ function once(p: Row, key: string, message: string) {
 }
 function runJobsInternal() {
   let evaluated = 0;
+  const policy = readRiskPolicy();
   for (const p of all('projects').filter((p) => p.status === 'ACTIVE')) {
     evaluated++;
     const current = Date.parse(stamp());
-    const idle = (current - Date.parse(p.lastActivityAt)) / 3600000;
     const ms = all('milestones').filter(
       (m) =>
         m.projectId === p.id &&
         !m.archived &&
         !['RELEASED', 'REFUNDED', 'CANCELLED', 'SETTLED'].includes(m.status),
     );
-    const overdue = ms.filter(
-      (m) =>
-        Date.parse(m.dueDate) < current &&
-        !['ACCEPTED', 'SUBMITTED', 'IN_REVIEW', 'DISPUTED'].includes(m.status),
-    );
-    const needsActivity = ms.some((m) =>
-      ['READY_TO_START', 'IN_PROGRESS', 'REVISION_REQUESTED'].includes(m.status),
-    );
-    const reasons: string[] = [];
-    if (needsActivity && idle >= 48)
-      reasons.push(`No meaningful freelancer update for ${Math.floor(idle)} hours`);
-    if (needsActivity && idle >= 96) reasons.push('Two 48-hour progress check-ins missed');
-    if (overdue.length) reasons.push(`${overdue.length} milestone deadline(s) overdue`);
-    if (p.withdrawalRequestedAt) reasons.push('Freelancer requested withdrawal');
-    p.risk =
-      p.withdrawalRequestedAt ||
-      (needsActivity && idle >= 72) ||
-      overdue.some((m) => current - Date.parse(m.dueDate) > 48 * 3600000)
-        ? 'AT_RISK'
-        : reasons.length
-          ? 'WARNING'
-          : 'HEALTHY';
-    p.riskReasons = reasons;
-    p.missedCheckins = needsActivity ? Math.floor(idle / 48) : 0;
+    Object.assign(p, evaluateRisk(p, ms, stamp(), policy));
     put('projects', p);
-    if (p.risk !== 'HEALTHY')
-      once(p, `RISK_${p.risk}`, `Project risk: ${p.risk}. ${reasons.join('; ')}`);
+    if (p.risk !== 'ON_TRACK')
+      once(
+        p,
+        `RISK_${p.risk}_${createHash('sha256')
+          .update(
+            JSON.stringify([
+              p.lastActivityAt,
+              p.riskSignals.map((s: Row) => [
+                s.rule,
+                s.activityAt,
+                s.thresholdHours,
+                s.milestoneId,
+              ]),
+            ]),
+          )
+          .digest('hex')
+          .slice(0, 16)}`,
+        `Project risk: ${p.risk}. ${p.riskReasons.join('; ')}`,
+      );
     for (const m of ms) {
       if (Date.parse(m.dueDate) - current <= 24 * 3600000 && Date.parse(m.dueDate) > current)
         once(p, `DEADLINE_REMINDER_${m.id}`, `Milestone “${m.title}” is due within 24 hours.`);

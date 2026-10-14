@@ -1,51 +1,43 @@
 # MilestoneGuard build progress
 
-Updated: **14 October 2026 (Asia/Kolkata)**.
+Updated **14 October 2026, Asia/Kolkata**, readiness branch `codex/hackathon-readiness`, preserved baseline `c378499` / tag `codex/pre-readiness-20261014`.
 
-## Final status
+## Readiness outcome
 
-The existing **local hackathon demo scope is complete and verified**. All requested critical client, freelancer, replacement, and administrator journeys pass against the production build. No restart or component redesign was needed. No failing tests or known critical workflow blockers remain in the tested scope. Commercial provider integrations remain separate future work.
+The working application was extended in place, without a component redesign or database replacement. The feasible local hackathon workflows pass against the optimized application. External approvals, live-money payments, actual wallet-extension UX and live AI are separate limitations, not completed production features.
 
-The additive **Stellar Testnet integration is implemented and deployed**. Live CLI and production-browser checks confirm the escrow lifecycle, disputes and replacement isolation. Actual Freighter popup signing remains an external verification step: the extension is absent from the inspected Chrome profile. See [blockchain progress](BLOCKCHAIN_PROGRESS.md), [setup/demo](docs/BLOCKCHAIN.md), and [current verification](docs/VERIFICATION.md). The original database and all 19 private uploads are unchanged.
+Implemented in this pass:
 
-## Completed application
+- Shared completion gate across current milestones, original archived financial obligations, open disputes, pending agreements and both payment modes.
+- Independently transactional simulated adapter, one-operation constraints, persistent request/confirmation events and recipient-only idempotent payment acknowledgements.
+- Agreed objective filename/text/image rules; bounded full PNG/JPEG decoding and isolated PDF structure parsing; explained failed checks and blocked ordinary acceptance.
+- Configurable canonical risk states, timestamped rule explanations, stable notification episodes and immediate refresh after meaningful activity/mutual extension. No trained ghosting prediction.
+- Optional explicit OpenAI provider alongside gateway, schema/quote/reference validation, no financial tools, timeout/fallback; richer editable Scope Doctor, consent-gated text excerpts and dispute briefs.
+- Inline admin open-dispute criteria/versions/claims, reviewer assignment, non-executing external legal-order register and confirmed-execution associations.
+- Cursor-paginated authorized audit history, domain indexes, additive migration 003, updated security/setup/architecture/demo/status/legal and judge materials.
+- Browser regression covering failed/ corrected evidence, acknowledgements, valid PDF production route, fictional legal records and complete original settlement/replacement payout.
 
-- Persistent SQLite database, migrations, private evidence storage, and reproducible seven-project demo dataset.
-- Password authentication, opaque cookie sessions, role authorization, origin checks, rate limiting, and bounded uploads.
-- Project/milestone creation, dual signatures, immutable versioned amendments, acceptance checklists, revisions, and human acceptance.
-- Transactional simulated funding, payout/refund confirmation, immutable ledger, and duplicate payout protection.
-- Check-ins, inactivity/deadline signals, scheduled processing, and 72-hour client review escalation.
-- Dispute statements and administrator settlements; recovery handovers, replacement agreements, and separate original/replacement financial entitlements.
-- Responsive role workspaces, dashboards, private downloads, notifications, audit views, profile/settings, and administrator demo controls.
-- Rule-based Scope Doctor and optional advisory AI integration with failure fallback.
-- Reproducible browser tests, production startup verification, README, demo guide, and actual verification records.
+## Executed results
 
-## Final checks
+| Check                                 | Result                                                                                                  |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| TypeScript / ESLint                   | Passed; lint zero warnings/errors                                                                       |
+| Vitest                                | **78/78 passed**, nine files                                                                            |
+| Soroban unit tests                    | **28/28 passed**                                                                                        |
+| Production Playwright local workflows | **8/8 passed**, 46.5 seconds                                                                            |
+| Testnet production Playwright         | **2/2 passed**, 2.2 minutes; real network, explicit signing transport fixture                           |
+| Development verification              | Original six passed; added corrected-upload test and targeted admin/recovery checks passed during fixes |
+| Optimized build                       | Passed, 18 pages/routes                                                                                 |
+| Setup/migrations/seed/jobs            | Passed; existing eight development projects preserved, four active evaluated                            |
+| Original data preservation            | Original SQLite database and 19 upload SHA-256 hashes match                                             |
+| Build privacy / PDF trace             | 22 traces checked, no private data/configuration/tool secrets; worker dependencies included             |
+| Dependency audit                      | Zero critical/runtime findings; five existing high development-tool findings                            |
 
-| Check                                                            | Result                                                                |
-| ---------------------------------------------------------------- | --------------------------------------------------------------------- |
-| Default localhost launch/login/logout                            | Passed                                                                |
-| Formatting                                                       | Passed                                                                |
-| TypeScript                                                       | Passed                                                                |
-| ESLint                                                           | Passed, zero errors/warnings                                          |
-| Vitest                                                           | 56/56 passed across seven files                                       |
-| Soroban contract tests                                           | 28/28 passed                                                          |
-| Real Testnet CLI smoke                                           | 17 confirmed transactions; passed                                     |
-| Testnet production browser                                       | 2/2 passed; extension transport fixture, eight confirmed transactions |
-| Playwright development                                           | 6/6 passed                                                            |
-| Playwright production, including check-in/download/mobile checks | 6/6 passed                                                            |
-| Optimized production build                                       | Passed                                                                |
-| Setup, migrations, seed, scheduled job command                   | Passed                                                                |
-| Browser runtime/console errors                                   | Zero across five final UI journeys                                    |
-| Private data/configuration in build traces                       | None                                                                  |
+The final live CLI regression also passed with **17 confirmed Testnet transactions**, covering original entitlement preservation, explicit resolver refund and replacement payout. The default optimized localhost:3000 app passed admin login, reload, all eight preserved project IDs, 390px layout and mobile-navigation logout with zero browser errors. Final formatting and diff checks passed. Public current receipts are in `deployments/readiness-testnet-*.json`.
 
-See [VERIFICATION.md](docs/VERIFICATION.md) for exact commands, coverage, timings, screenshots, and limitations.
+Full executed evidence and Testnet rerun details: [VERIFICATION.md](docs/VERIFICATION.md). Original network receipts are retained; current fixture runs create new isolated retained directories. Actual Freighter signing is not verified by a fixture.
 
-## Remaining limitations
-
-Local INR funds remain simulated; optional escrow transfers free Testnet XLM only. Freighter setup and actual popup verification remain required. Mainnet/live INR payments, split on-chain settlements, multisig/smart wallets, hosted storage/database, provider identity verification, external email, malware scanning, and public deployment are outside this release. Live optional AI and other browser engines were not tested. Node SQLite emits an experimental API warning. npm audit reports five high development-tool dependency findings, zero critical findings, and no runtime dependency finding; the proposed fix is an incompatible lint-config downgrade and remains unapplied.
-
-## Launch
+## Demo and launch
 
 ```sh
 npm ci
@@ -53,6 +45,16 @@ npm run setup
 npm run db:migrate
 npm run db:seed
 npm run dev
+# Separate terminal
+npm run jobs:watch
 ```
 
-Open **http://localhost:3000**. In a second terminal run `npm run jobs:watch` for automatic accountability checks. For the optimized application use `npm run build` followed by `npm start`. All four fictional demo accounts use `DemoPass123!`; see [README.md](README.md) for account emails and [DEMO.md](docs/DEMO.md) for the presentation walkthrough.
+Open http://localhost:3000. Optimized alternative: `npm run build` then `npm start`. Current server uses private `data/blockchain-dev.sqlite` / `data/blockchain-uploads`; fresh setup defaults to the original local path. No database API key or cloud account is needed. Seed creates seven fictional scenarios without deleting an additional existing project. Original `data/milestoneguard.sqlite` and its uploads remain untouched.
+
+Four fictional accounts use `DemoPass123!`: `client@milestoneguard.demo`, `freelancer@milestoneguard.demo`, `replacement@milestoneguard.demo`, `admin@milestoneguard.demo`. Exact A–M clicks, expected records/financial outcomes, reset isolation and tests: [DEMO_GUIDE.md](DEMO_GUIDE.md). [JUDGE_QA.md](JUDGE_QA.md) answers all 26 requested judge questions.
+
+## Remaining boundaries
+
+Local INR is simulated; optional escrow transfers free Testnet XLM only. Actual Freighter installation/popup approval and live AI credentials remain external verification. No mainnet/live INR provider, legal/compliance sign-off, independently authenticated legal-order execution, Supabase/cloud storage, production identity/recovery, email, malware scanning, verified directory/matching or load/independent security certification exists. On-chain split settlements are not supported. Some read models remain collection-wide, SQLite writes serialize, audit constraints do not defeat privileged DBAs, and other browsers/accessibility are unverified. Existing development-only npm findings require a compatible upstream update rather than the proposed incompatible lint-config downgrade.
+
+Current classifications and staged roadmap: [MVP_STATUS.md](MVP_STATUS.md), [AUDIT_REPORT.md](AUDIT_REPORT.md), [LEGAL_AND_PAYMENT_READINESS.md](LEGAL_AND_PAYMENT_READINESS.md).

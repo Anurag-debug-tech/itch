@@ -22,6 +22,7 @@ export async function POST(req: NextRequest) {
       description: String(form.get('description') || ''),
       url: String(form.get('url') || '') || undefined,
       file,
+      allowAiEvidence: form.get('allowAiEvidence') === 'true',
     });
     return { ok: true, submission };
   });

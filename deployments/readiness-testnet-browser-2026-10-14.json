@@ -1,0 +1,66 @@
+{
+  "network": "STELLAR_TESTNET",
+  "contractId": "CDQODC2CCYGKCUKTXXN24BQK4GMKJLUK4QQOWKJP2POD5W3B5NDC27ID",
+  "signing": "Explicit Freighter extension transport fixture; actual extension popup not verified",
+  "mode": "production",
+  "verifiedAt": "2026-10-14T07:15:06.070Z",
+  "browserTestsPassed": 2,
+  "transactions": [
+    {
+      "method": "create_agreement",
+      "hash": "7d03ebff8d4103267826a749aba89d9d728340ccb3e8b09d8ee17b1d52b35bb7",
+      "ledger": 5187638,
+      "status": "CONFIRMED",
+      "explorer": "https://stellar.expert/explorer/testnet/tx/7d03ebff8d4103267826a749aba89d9d728340ccb3e8b09d8ee17b1d52b35bb7"
+    },
+    {
+      "method": "accept_agreement",
+      "hash": "2c4d451d4163cd3df7bffa821e2a9a548809b240e623f8dbc9d50a574874bbac",
+      "ledger": 5187641,
+      "status": "CONFIRMED",
+      "explorer": "https://stellar.expert/explorer/testnet/tx/2c4d451d4163cd3df7bffa821e2a9a548809b240e623f8dbc9d50a574874bbac"
+    },
+    {
+      "method": "fund_milestone",
+      "hash": "4336c704e1d5ff0e7c5759d5619f57da889b42b2179aa04c4321878e04572a31",
+      "ledger": 5187643,
+      "status": "CONFIRMED",
+      "explorer": "https://stellar.expert/explorer/testnet/tx/4336c704e1d5ff0e7c5759d5619f57da889b42b2179aa04c4321878e04572a31"
+    },
+    {
+      "method": "fund_milestone",
+      "hash": "60829fc603f8ad4fefe0f1bbb8a77e2453fe16e7a55ba9717f24e82c36d003ab",
+      "ledger": 5187645,
+      "status": "CONFIRMED",
+      "explorer": "https://stellar.expert/explorer/testnet/tx/60829fc603f8ad4fefe0f1bbb8a77e2453fe16e7a55ba9717f24e82c36d003ab"
+    },
+    {
+      "method": "submit_work",
+      "hash": "34c31cae0dcff0d1a1af9a8e75a9a810bfcf8789f6df6c74a74829e788ff8046",
+      "ledger": 5187649,
+      "status": "CONFIRMED",
+      "explorer": "https://stellar.expert/explorer/testnet/tx/34c31cae0dcff0d1a1af9a8e75a9a810bfcf8789f6df6c74a74829e788ff8046"
+    },
+    {
+      "method": "approve_and_release",
+      "hash": "23b6eedf578644c51e630d1a0ec22700e6f124a24e33c09ff56841073f295a27",
+      "ledger": 5187651,
+      "status": "CONFIRMED",
+      "explorer": "https://stellar.expert/explorer/testnet/tx/23b6eedf578644c51e630d1a0ec22700e6f124a24e33c09ff56841073f295a27"
+    },
+    {
+      "method": "raise_dispute",
+      "hash": "4b27afd7351e9948c0733d1c630556c37508d444c2b9914807609f673da99d25",
+      "ledger": 5187654,
+      "status": "CONFIRMED",
+      "explorer": "https://stellar.expert/explorer/testnet/tx/4b27afd7351e9948c0733d1c630556c37508d444c2b9914807609f673da99d25"
+    },
+    {
+      "method": "refund_authorized",
+      "hash": "7afd492b95c6e7d617bfdc64703e61c5337d89aa1c664d210b0dc8293cd8ee27",
+      "ledger": 5187656,
+      "status": "CONFIRMED",
+      "explorer": "https://stellar.expert/explorer/testnet/tx/7afd492b95c6e7d617bfdc64703e61c5337d89aa1c664d210b0dc8293cd8ee27"
+    }
+  ]
+}

@@ -78,6 +78,55 @@ async function submit(milestoneId: string, content: Buffer = evidence, fileName 
   });
 }
 const milestoneState = (id: string) => bootstrap(client).milestones.find((m) => m.id === id)!;
+it('uses the mutually approved extension date and resets the activity episode after approval', () => {
+  const { project, milestone } = funded();
+  action(admin, { type: 'advanceClock', hours: 121 });
+  expect(bootstrap(client).projects.find((p) => p.id === project.id)!.risk).toBe('AT_RISK');
+  const amended = action(client, {
+    type: 'amend',
+    projectId: project.id,
+    milestoneId: milestone.id,
+    dueDate: new Date(Date.parse(now()) + 3 * 86400000).toISOString(),
+    reason: 'Both parties agree to extend this milestone deadline.',
+  });
+  for (const user of [client, freelancer])
+    action(user, {
+      type: 'acceptAgreement',
+      projectId: project.id,
+      agreementId: amended.agreement.id,
+    });
+  runJobs();
+  const refreshed = bootstrap(client).projects.find((p) => p.id === project.id)!;
+  expect(refreshed.risk).toBe('ON_TRACK');
+  expect(refreshed.riskReasons).toEqual([]);
+});
+it('uses configurable monitoring thresholds and idempotent timestamped risk explanations', () => {
+  const { project } = funded();
+  const policy = { checkinHours: 6, attentionHours: 6, riskHours: 12, deadlineGraceHours: 24 };
+  expect(() => action(client, { type: 'updateRiskPolicy', policy })).toThrow(/Administrator/);
+  action(admin, { type: 'updateRiskPolicy', policy });
+  action(admin, { type: 'advanceClock', hours: 13 });
+  const data = bootstrap(client),
+    risk = data.projects.find((p) => p.id === project.id)!;
+  expect(risk.risk).toBe('AT_RISK');
+  expect(risk.riskReasons.join(' ')).toContain(risk.lastActivityAt);
+  expect(risk.riskReasons.join(' ')).toContain('12-hour');
+  const notifications = data.notifications.length;
+  action(admin, { type: 'advanceClock', hours: 1 });
+  runJobs();
+  expect(bootstrap(client).notifications).toHaveLength(notifications);
+});
+it('does not generate freelancer inactivity or old-deadline warnings for released work', async () => {
+  const { project, milestone } = funded();
+  await submit(milestone.id);
+  action(client, { type: 'review', milestoneId: milestone.id, decision: 'ACCEPT' });
+  action(client, { type: 'payout', milestoneId: milestone.id });
+  action(admin, { type: 'advanceClock', hours: 121 });
+  runJobs();
+  const state = bootstrap(client).projects.find((p) => p.id === project.id)!;
+  expect(state.risk).toBe('ON_TRACK');
+  expect(state.riskReasons).toEqual([]);
+});
 const milestoneLedger = (id: string) =>
   bootstrap(client).ledger.filter((l) => l.milestoneId === id);
 

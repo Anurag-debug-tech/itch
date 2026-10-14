@@ -219,6 +219,10 @@ export function resetDemo() {
     const d = getDb();
     d.exec('DROP TRIGGER immutable_ledger_delete;');
     for (const table of [
+      'legal_order_executions',
+      'legal_orders',
+      'payment_acknowledgements',
+      'payment_events',
       'sessions',
       'wallet_challenges',
       'wallet_links',

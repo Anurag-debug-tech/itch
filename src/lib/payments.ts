@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { getDb, get, put, all, type Row } from './db';
+import { getDb, get, put, all, transaction, type Row } from './db';
 import { now } from './time';
 import { assert, AppError } from './errors';
 export interface PaymentAdapter {
@@ -30,6 +30,13 @@ function request(kind: string, milestoneId: string, amount: number, reference: s
     );
     return prior;
   }
+  assert(
+    !d
+      .prepare('SELECT id FROM payment_intents WHERE milestoneId=? AND kind=?')
+      .get(milestoneId, kind),
+    'This milestone operation already has a transaction; use its original reference',
+    409,
+  );
   assert(Number.isSafeInteger(amount) && amount > 0, 'Invalid payment amount');
   const result = { id: randomUUID(), milestoneId, kind, amount, status: 'PENDING', reference };
   d.prepare('INSERT INTO payment_intents VALUES (?,?,?,?,?,?)').run(
@@ -40,7 +47,27 @@ function request(kind: string, milestoneId: string, amount: number, reference: s
     result.status,
     reference,
   );
+  recordEvent(result, 'REQUESTED');
   return result;
+}
+function recordEvent(intent: Row, phase: 'REQUESTED' | 'CONFIRMED') {
+  getDb()
+    .prepare('INSERT INTO payment_events VALUES (?,?,?,?)')
+    .run(randomUUID(), intent.id, phase, now());
+  const milestone = get('milestones', intent.milestoneId)!;
+  put('audit', {
+    id: randomUUID(),
+    projectId: milestone.projectId,
+    actorId: 'adapter:LOCAL_DEMO',
+    action: `SIMULATED_${intent.kind}_${phase}`,
+    detail: {
+      intentId: intent.id,
+      reference: intent.reference,
+      amount: intent.amount,
+      currency: 'INR',
+    },
+    createdAt: now(),
+  });
 }
 function confirm(id: string, kind: string): Row {
   const d = getDb();
@@ -103,15 +130,16 @@ function confirm(id: string, kind: string): Row {
   };
   put('ledger', row);
   d.prepare("UPDATE payment_intents SET status='CONFIRMED' WHERE id=?").run(id);
+  recordEvent(intent, 'CONFIRMED');
   return { ...intent, status: 'CONFIRMED' };
 }
 export const paymentAdapter: PaymentAdapter = {
-  createFundingIntent: (m, a, r) => request('FUNDING', m, a, r),
-  confirmFunding: (id) => confirm(id, 'FUNDING'),
-  requestPayout: (m, a, r) => request('PAYOUT', m, a, r),
-  confirmPayout: (id) => confirm(id, 'PAYOUT'),
-  requestRefund: (m, a, r) => request('REFUND', m, a, r),
-  confirmRefund: (id) => confirm(id, 'REFUND'),
+  createFundingIntent: (m, a, r) => transaction(() => request('FUNDING', m, a, r)),
+  confirmFunding: (id) => transaction(() => confirm(id, 'FUNDING')),
+  requestPayout: (m, a, r) => transaction(() => request('PAYOUT', m, a, r)),
+  confirmPayout: (id) => transaction(() => confirm(id, 'PAYOUT')),
+  requestRefund: (m, a, r) => transaction(() => request('REFUND', m, a, r)),
+  confirmRefund: (id) => transaction(() => confirm(id, 'REFUND')),
   getTransactionStatus(id) {
     const r = getDb().prepare('SELECT * FROM payment_intents WHERE id=?').get(id) as
       Row | undefined;

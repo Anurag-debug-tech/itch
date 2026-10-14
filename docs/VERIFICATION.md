@@ -1,96 +1,74 @@
 # Verification record
 
-Verified on **14 October 2026 (Asia/Kolkata)** against the actual application. The local hackathon workflows are complete and passing. These results do not establish readiness for real-money or public production use.
+**14 October 2026, Asia/Kolkata.** Readiness implementation on `codex/hackathon-readiness`, preserved baseline `c378499` and tag `codex/pre-readiness-20261014`. These are executed local results, not independent security/legal certification or permission to handle real funds.
 
-## Stellar integration verification
+## Current readiness results
 
-The existing application was extended on branch `codex/stellar-testnet`, with baseline tag `codex/pre-stellar-20261014`. The original SQLite database and **all 19 private uploads were verified unchanged using their original SHA-256 hashes**. Development, local browser tests, Testnet CLI smoke and Testnet browser tests use separate databases/upload directories.
+| Executed check                                                                 | Actual result                                                                                                                                                                                                                    |
+| ------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Fresh baseline before changes                                                  | 56/56 Vitest; typecheck/lint passed; six original production browser tests passed in 26.3 s                                                                                                                                      |
+| `npm run typecheck`                                                            | Passed                                                                                                                                                                                                                           |
+| `npm run lint`                                                                 | Passed, zero errors/warnings                                                                                                                                                                                                     |
+| `npm test`                                                                     | **78/78 passed**, nine files, final functional run 9.70 s                                                                                                                                                                        |
+| `npm run test:contract`                                                        | **28/28 passed**, no contract implementation changed                                                                                                                                                                             |
+| `npm run build`                                                                | Passed; optimized Next.js 16.4 build and all 18 pages/routes generated                                                                                                                                                           |
+| `PLAYWRIGHT_CHANNEL=chrome PLAYWRIGHT_SERVER_MODE=production npm run test:e2e` | **8/8 passed**, 46.5 s, isolated port 3100/storage                                                                                                                                                                               |
+| Development browser checks during fixes                                        | Six original tests passed; corrected-upload/acknowledgement test passed; targeted admin and expanded recovery tests 2/2 passed in 17.0 s                                                                                         |
+| Setup/migrate/seed/jobs                                                        | Passed on separate existing development storage; migration 003 applied, seed preserved all eight existing projects (seven seeded plus one additional project), four active projects evaluated, no pending Testnet reconciliation |
+| Original storage hashes                                                        | Original `data/milestoneguard.sqlite` and **all 19 original uploads unchanged**, SHA-256 manifest matched                                                                                                                        |
+| Build trace privacy                                                            | **22 traces checked**: no private data, `.env` or `.tools` paths; PDF worker and pdf-lib dependencies included                                                                                                                   |
+| Fresh `npm audit --json`                                                       | Zero critical/runtime findings; **five high development-tool findings** in existing ESLint/glob chain                                                                                                                            |
 
-| Executed check                                                                       | Actual result                                                                                        |
-| ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
-| `npm test`                                                                           | **56/56 passed**, seven files; 7.09 seconds                                                          |
-| `npm run typecheck`                                                                  | Passed                                                                                               |
-| `npm run lint`                                                                       | Passed, zero errors/warnings                                                                         |
-| `npm run test:contract`                                                              | **28/28 passed**, zero failed                                                                        |
-| Soroban WASM build                                                                   | Passed, 9,378-byte WASM, pinned SDK 28.0.0                                                           |
-| Testnet contract deployment                                                          | Confirmed; address and two deployment transactions in `deployments/stellar-testnet.json`             |
-| Original Playwright development suite                                                | **6/6 passed**, 45.3 seconds                                                                         |
-| Original Playwright production suite                                                 | **6/6 passed**, 32.1 seconds                                                                         |
-| `npm run test:stellar:smoke`                                                         | **Passed**, 17 real Testnet transactions confirmed and reconciled                                    |
-| `RUN_STELLAR_TESTNET_TESTS=1 PLAYWRIGHT_CHANNEL=chrome npm run test:stellar:browser` | **1/1 passed** on development, 2.3 minutes                                                           |
-| Same Testnet browser command with `PLAYWRIGHT_SERVER_MODE=production`                | **2/2 passed**, 2.1 minutes; eight real Testnet transactions confirmed                               |
-| Production browser runtime/console errors                                            | Zero during the full Testnet journey and original workflows                                          |
-| Testnet mobile view                                                                  | 390-pixel layout checked for overflow and closed navigation; retained screenshots                    |
-| `npm run jobs`                                                                       | Passed on separate development storage; accountability and Testnet reconciliation entry points ran   |
-| Build trace privacy                                                                  | No private data, environment or `.tools` signing/tool files in 19 checked traces                     |
-| Fresh `npm audit --json`                                                             | Zero critical; five existing high findings in development-only ESLint/glob chain; no runtime finding |
+Final supplementary checks: **Testnet production browser 2/2 passed in 2.2 minutes, eight confirmed transactions**; **live CLI smoke passed, 17 confirmed transactions**. Fresh public proofs: [readiness browser receipts](../deployments/readiness-testnet-browser-2026-10-14.json), [readiness CLI receipts](../deployments/readiness-testnet-smoke-2026-10-14.json). Both use disposable test keys/isolated retained storage, not real user wallet approval.
 
-The CLI smoke verified funded wallet ownership against Horizon, agreement creation/acceptance, multiple exact deposits, upload commitments, human review, normal release, duplicate payout rejection, dispute blocking, designated resolver release/refund, ghosting/recovery, a fresh replacement escrow and payout, preserved original entitlement, exact conservation, and an unchanged simulated ledger. [Public receipts](../deployments/testnet-smoke-2026-10-14.json) include hashes and confirmed ledgers.
+Default optimized localhost:3000 startup was checked in Chrome: seeded admin login, all **eight existing project IDs matched the pre-readiness backup**, updated admin panels, reload, 390px layout without horizontal overflow and logout through mobile navigation passed with zero browser errors. [Desktop](screenshots/readiness-admin-desktop.png) and [mobile](screenshots/readiness-admin-mobile.png) screenshots were captured and inspected. An initial smoke assertion incorrectly assumed only seven projects; the existing eighth project was preserved. Mobile logout was repeated with the navigation opened, as required by the responsive UI.
 
-The final optimized build and default localhost:3000 launch passed. A Chrome startup check verified seeded login, the seven-project dashboard, configured Testnet controls, clear missing-wallet guidance, logout and zero browser errors. The disposable deployment identity was removed after deployment. No application or checked-in signing key is required.
+Final `npm run format:check` and `git diff --check` passed.
 
-The production browser suite exercised the unmodified official Freighter API through an **explicit extension transport test fixture** whose temporary keys stay in the test process. Application HTTP routes, signed challenge verification, RPC, contract execution and SQLite reconciliation were real. It verified three role logins/wallet proofs, XLM project creation, dual agreement acceptance, contract acceptance, funding, upload, submission commitment, review, payout, dispute/refund, persisted status, explorer links, separate accounting and mobile overflow. A second check rejected a missing wallet and wrong network before any challenge request. [Browser receipts](../deployments/testnet-browser-2026-10-14.json), [desktop](screenshots/stellar-testnet-desktop.png), [mobile](screenshots/stellar-testnet-mobile.png).
+Node 24.8.0/npm 11.6.0 on macOS Apple Silicon, installed Google Chrome via Playwright. SQLite emits Node's experimental warning. Playwright's color and Chrome host diagnostic warnings are not application runtime exceptions.
 
-**External blocker:** Chrome's actual extensions page was inspected. It lists GoFullPage and Google Docs Offline, but no Freighter. Actual extension connection/popups and human wallet authorization therefore remain unverified. No user wallet keys or recovery phrases were created or stored. No mainnet or real-money transaction occurred. Follow [wallet setup and the manual demonstration](BLOCKCHAIN.md) to complete that verification.
+The initial new browser run found two **test harness defects**: asserting a check array as a string, and an exact label match on a project select containing options. Both were corrected; the first interrupted retry is not counted as a pass. The final complete production suite passes. Lint found CommonJS-worker import-rule and JSX apostrophe issues, now fixed. No failing tests or known critical blockers remain in the exercised local workflows.
 
-New deterministic coverage includes migration/legacy-ledger preservation, reset isolation, exact stroop arithmetic beyond safe floating-point range, aggregate formatting, canonical commitments, challenge/session/origin/replay/signature checks, duplicate transaction preparation/submission, receipt/event validation, restart recovery and replacement isolation. Expired attempts become retryable only when retained network history proves non-execution; uncertain outcomes remain blocked. A confirmed wallet-broadcast transaction can be recovered even when its signature never reached the API.
+## What the eight browser checks prove
 
-Final safety checks also verify that different intents for one wallet cannot compete for a Stellar account sequence, and that a pending amendment blocks stale agreement creation. Confirmation validation and read-model updates share the same SQLite write lock.
+1. HTTP authorization/origin/CSRF, forged admin rejection, private downloads, role restrictions, disputed payout blocking and authorized partial settlement. **Six simultaneous payout requests create exactly one payout.**
+2. Separate funding receipt acknowledgement, zero-byte/corrupt-PDF/wrong-type rejection, irrelevant text objective failure, blocked ordinary acceptance, criterion-specific revision, corrected text, human acceptance, separate payout, recipient acknowledgement and persistence after reload. Both actual request/confirmation stages persist; no file upload pays automatically.
+3. Real valid PDF upload through the production route/isolated parser, inline admin dispute inspection, reviewer assignment, rule evidence brief, fictional legal-order record/external finding, independent authorized refund, existing execution association and client denial. Recording/reviewing/linking does not create money or legal authority.
+4. Three-milestone project creation through UI, editable Scope Doctor fallback, both agreement signatures, funding/start/check-in, private file download, review/separate payouts and completed project. Desktop/390px layout/navigation checks.
+5. Client dispute, freelancer statement, blocked payment and reasoned admin ₹1,800 payout/₹1,200 refund.
+6. ₹3,000 original first release, ₹9,000 unfinished funding, 73-hour explained inactivity, intervention/recovery, accepted-only handover, explicit original refund, replacement invitation and new agreement, fresh funding/work/submission/payment and completed project. Original first payout remains unchanged; two payouts and one refund total, with separate entitlements.
+7. Client silence reminder then 72-hour escalation with zero automatic payout, followed by authorized release.
+8. Public client registration/profile, versioned amendment, both signatures, criterion revision/resubmission, notification acknowledgement and explicit reset of the isolated demo.
 
-The following sections retain the original local-demo baseline results for comparison.
+The new two browser journeys use authenticated public-API setup to reach the relevant agreed/funded state; their uploads, reviews, payment receipts, dispute and legal-record mutations use the UI. Existing full-lifecycle journeys perform project creation/signing/funding/recovery via UI. API reads assert persisted balances and versions. Negative API calls verify denial. No claim is made that setup shortcuts themselves were UI clicks.
 
-## Executed checks
+## Unit/integration additions
 
-Environment: macOS Apple Silicon, Node.js **24.8.0**, npm **11.6.0**, Next.js **16.4.0**, installed Google Chrome via Playwright. Browser tests use real forms, buttons, uploads, downloads, and independent role sessions. API reads assert persisted state; browser workflow mutations are performed through the UI.
+Seven finance/readiness tests cover request versus confirmation, reference conflict/retry, recipient-only idempotent acknowledgement, replacement-completion blocking until original settlement, legal role/scope/maximum/duplicate/no-money boundaries, reviewer assignment/evidence access and 120-event stable cursor pagination. Eight evidence tests cover zero/type failure, corrupt PDF despite valid magic/EOF, parsed valid PDF, truncated PNG despite valid header, irrelevant text failure/blocked acceptance, objective pass without automatic acceptance/payment, decoded dimension pass/fail and duplicate immutable versions.
 
-| Check                                                                          | Actual result                                                                 |
-| ------------------------------------------------------------------------------ | ----------------------------------------------------------------------------- |
-| `npm run setup`                                                                | Passed; existing private configuration preserved                              |
-| `npm run db:migrate`                                                           | Passed                                                                        |
-| `npm run db:seed`                                                              | Passed; existing main demo data preserved                                     |
-| `npm run jobs`                                                                 | Passed; four eligible projects evaluated                                      |
-| `npm run format:check`                                                         | Passed                                                                        |
-| Default `npm start` at `http://localhost:3000`                                 | Chrome login, seven-project dashboard, and logout passed; zero browser errors |
-| `npm run typecheck`                                                            | Passed                                                                        |
-| `npm run lint`                                                                 | Passed; zero errors and zero warnings                                         |
-| `npm test`                                                                     | **25/25 passed**, four test files                                             |
-| `PLAYWRIGHT_CHANNEL=chrome npm run test:e2e`                                   | **6/6 passed**, development server, 34.8 seconds                              |
-| `npm run build`                                                                | Passed; optimized build and route generation completed                        |
-| `PLAYWRIGHT_CHANNEL=chrome PLAYWRIGHT_SERVER_MODE=production npm run test:e2e` | **6/6 passed**, production server, final expanded run 24.8 seconds            |
-| Browser runtime/console errors                                                 | Zero in all five final UI journeys                                            |
-| Build output file traces                                                       | No private `data/` or `.env` files included                                   |
+Additional workflow tests cover approved extensions, configurable thresholds/idempotent warnings and released-work exclusions. AI tests cover fallback, invalid/adversarial output, missing/invented quotes/references, optional direct provider configuration and `store:false`, no tools and no financial action. Provider outputs are mocked; **live OpenAI success is unverified**.
 
-The production E2E command started `npm start -- --port 3100`, checked readiness, executed the suite, and stopped its server afterward. It used explicitly enabled demo mode, an exact matching origin, an isolated SQLite database, and private test uploads. The normal journey confirmed persistence after a page reload. There are no failing tests or known critical blockers in the verified demo workflows.
+## Stellar Testnet proof and boundaries
 
-## Browser journeys
+The existing deployed contract is `CDQODC2CCYGKCUKTXXN24BQK4GMKJLUK4QQOWKJP2POD5W3B5NDC27ID`, SDK 28/CLI 28.1, pinned 9,378-byte WASM. No redeployment or mainnet action was performed by this readiness pass.
 
-1. **Normal project completion:** client creates a ₹12,000 project with ₹3,000/₹4,000/₹5,000 milestones, uses Scope Doctor, and signs the agreement; freelancer signs, starts funded milestones, posts a progress check-in, and uploads actual evidence. Client downloads files, reviews each checklist, accepts, and separately releases simulated payments. All three payouts persist after reload; the project is completed.
-2. **Disputed delivery:** client opens a dispute, payment remains blocked, freelancer adds a statement, and administrator authorizes a ₹1,800 payout plus ₹1,200 refund on a ₹3,000 milestone. Persisted amounts and resolved status are checked.
-3. **Ghosting and recovery:** after 73 demo hours without meaningful activity, administrator runs accountability checks and client sees risk, records intervention, opens recovery, and inspects the accepted-work handover. Replacement receives fresh unfunded milestones; original funding remains separate. Both parties sign, client funds, replacement starts, and recovery becomes resumed.
-4. **Client review inactivity:** administrator advances 36 then 37 hours and runs checks. A reminder and review-timeout dispute appear without any payout. Administrator reviews and authorizes a release; exactly one payout is recorded.
-5. **Additional role workflows:** new client registers, edits profile, proposes a versioned amendment, both parties sign again, client requests a criterion-specific revision, freelancer resubmits, client accepts/pays and marks notifications read. Administrator resets the isolated demo, is returned to login, and signs into the restored seven-project seed.
-6. **HTTP security and concurrency:** unauthenticated access, self-assigned admin registration, unauthorized actions/private downloads, missing or hostile origins, non-admin settlement, and disputed payouts are rejected. Six concurrent authorized payout requests produce one ledger payout.
+The preserved baseline recorded **17 confirmed live CLI transactions** and **two production Testnet browser checks** with eight confirmed network transactions. Receipts: [CLI](../deployments/testnet-smoke-2026-10-14.json), [browser](../deployments/testnet-browser-2026-10-14.json); walkthrough and compatible tools: [BLOCKCHAIN.md](BLOCKCHAIN.md). The readiness production Testnet browser rerun also passed **2/2 in 2.2 minutes**, with eight confirmed network transactions and fresh isolated storage.
 
-Desktop and 390-pixel mobile layouts were captured and inspected. Mobile navigation opens and closes; the dashboard has no horizontal page overflow. Screenshots from the final production run are retained in [screenshots](screenshots/).
+Automated Testnet browser signing uses an **explicit extension transport fixture** with temporary process-only test keys; actual HTTP, signed challenges, RPC, contract execution and database reconciliation are real. This is not proof of actual Freighter popup UX. Previous direct Chrome extensions inspection found GoFullPage and Google Docs Offline, **no Freighter**. Real extension install/configuration and user-authorized signing remain an external verification step. No user recovery phrases or signing keys are stored by the application.
 
-## Vitest coverage
+## Persistence and preservation
 
-- Authentication and sessions: five tests, including password hashing, role restrictions, session revocation/expiry, rate limiting, and explicit demo-mode enforcement.
-- AI assistance: three tests for rule-based operation, provider failure fallback, and metadata-only advisory boundaries. Provider responses are mocked; no live AI call is claimed.
-- Request limits: four tests for streamed/declared body limits, malformed JSON, and origin enforcement.
-- Workflow services: thirteen tests for budgets/dates, dual signatures, immutable amendments, persisted/idempotent simulated payments, authorization, revision limits, invalid uploads, accepted-version-only handover, disputes/settlement, bounded refunds, inactivity/review escalation, and replacement entitlement separation.
+Current development uses `data/blockchain-dev.sqlite` / `data/blockchain-uploads`; fresh setup defaults to `data/milestoneguard.sqlite` / `data/uploads`. Before changes, an online database backup, private configuration copy and uploads were saved under `data/backups/pre-readiness-2026-10-14T06-25-43-484Z/`. The old production server was stopped before migrating development storage. The original database/upload set was never migrated/reset; hash verification proves preservation.
 
-## Fixes made during this finishing pass
-
-Removed unused imports; corrected unfunded status coloring, recent-activity ordering, paise display, recovery counters, and the default 72-hour review policy. Reset now returns the administrator to login without an unauthorized refresh. Removed the CSP-blocked remote font import and supplied the missing favicon. Runtime filesystem paths are excluded from build tracing, with migrations included. Tests now reset only their isolated database for reproducible runs and support both development and production servers.
+Local Playwright resets only `data/e2e.sqlite` and `data/e2e-uploads`. Live Testnet tests create new retained per-run directories and do not reset existing network state. Reset is blocked when escrow history exists. The application has no Supabase adapter and does not silently fall back to insecure cloud/local production storage.
 
 ## Remaining limitations
 
-- Payments are simulated. Hosted database/object storage, real payment processing, identity verification, external email, malware scanning, public deployment, and production operations are not implemented.
-- Optional AI provider credentials were not configured. Rule-based assistance and mocked failure handling are verified; live model output is unverified.
-- SQLite emits Node's experimental API warning. Deploy this adapter only on a persistent single-host Node environment with writable retained storage.
-- The executed `npm audit --json` reported **zero critical vulnerabilities and five high findings**, all in the development-only ESLint glob dependency chain (`braces`, `micromatch`, `fast-glob`, `@next/eslint-plugin-next`, `eslint-config-next`). No runtime dependency finding was reported. npm's proposed fix downgrades Next's lint configuration to version 14; that incompatible downgrade was not applied. Track a compatible upstream fix before expanding deployment scope.
-- Chromium/Chrome was tested. Firefox, Safari/WebKit, assistive technology, load testing, and a hosted production environment were not verified.
+- Simulated INR and free Testnet XLM only; no real-money provider, signed provider webhook adapter, regulatory approval, counsel sign-off or automated legal-order enforcement. Legal review names/findings are recorded, not independently authenticated.
+- Actual Freighter UI, live AI credentials, hosted deployment, PostgreSQL/object storage, production identity/recovery, email, malware scanning, full archive/video analysis, load testing, other browser engines and assistive-technology certification remain unverified/unimplemented as described in [MVP status](../MVP_STATUS.md).
+- Basic file structure/literal checks cannot prove semantic quality, authorship or malware safety. Model quote/reference validation cannot prove all reasoning correct. Human review is still required.
+- SQLite serializes writes; several read models remain collection-wide. Application audit constraints are not privileged-DBA tamper protection.
+- Fresh audit findings are `braces`, `micromatch`, `fast-glob`, `@next/eslint-plugin-next`, `eslint-config-next`. npm proposes an incompatible Next 14 lint-config downgrade, which was not applied. No new runtime advisory was reported; track a compatible upstream fix.
 
 ## Reproduce
 
@@ -102,9 +80,13 @@ npm run db:seed
 npm run typecheck
 npm run lint
 npm test
-PLAYWRIGHT_CHANNEL=chrome npm run test:e2e
+npm run format:check
 npm run build
 PLAYWRIGHT_CHANNEL=chrome PLAYWRIGHT_SERVER_MODE=production npm run test:e2e
+npm run test:contract
+# Opt-in actual Testnet network checks; fixture accounts and isolated retained storage:
+RUN_STELLAR_TESTNET_TESTS=1 PLAYWRIGHT_CHANNEL=chrome PLAYWRIGHT_SERVER_MODE=production npm run test:stellar:browser
+npm run test:stellar:smoke
 ```
 
-Without installed Chrome, run `npx playwright install chromium`, then omit `PLAYWRIGHT_CHANNEL=chrome`. Port 3100 must be free. Playwright resets `data/e2e.sqlite` and writes only to `data/e2e-uploads`; it preserves the main demonstration database. Reports are generated in ignored `playwright-report/` and `test-results/` directories. Run `npx playwright show-report` to inspect the latest report.
+Without Chrome, install Playwright Chromium and omit the channel. Ports 3100/3200 must be free. `npx playwright show-report` opens the ignored local-browser report; Testnet uses `playwright-stellar-report`. Exact live demonstration instructions and pass/fail criteria: [DEMO_GUIDE.md](../DEMO_GUIDE.md).

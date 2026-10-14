@@ -188,7 +188,7 @@ async function advance(admin: Page, hours: number) {
 async function resolve(
   admin: Page,
   projectId: string,
-  outcome: 'RELEASE' | 'PARTIAL',
+  outcome: 'RELEASE' | 'PARTIAL' | 'REFUND',
   rupees?: number,
 ) {
   await openProject(admin, projectId, 'Disputes');
@@ -372,6 +372,23 @@ test('browser inactivity and recovery preserves accepted work and resumes fresh 
     );
     await client.getByText('Inspect authorized handover', { exact: true }).click();
     await expect(client.locator('.snapshot pre')).toContainText('design-evidence.txt');
+    // Resolve only the unfinished original funding; keep the earned first payout intact.
+    await openProject(client, project.id);
+    await milestoneCard(client, milestones[1].title)
+      .getByRole('button', { name: 'Raise a dispute', exact: true })
+      .click();
+    await reasonDialog(
+      client,
+      'Raise a milestone dispute',
+      'Original unfinished funding requires a separate authorized refund before replacement.',
+    );
+    await resolve(admin, project.id, 'REFUND');
+    const settledOriginal = await state(client);
+    expect(settledOriginal.milestones.find((m) => m.id === milestones[0].id)?.paid).toBe(300000);
+    expect(settledOriginal.milestones.find((m) => m.id === milestones[1].id)?.refunded).toBe(
+      900000,
+    );
+    await openProject(client, project.id, 'Recovery');
     await client.getByRole('button', { name: 'Invite replacement', exact: true }).click();
     await client
       .getByRole('dialog')
@@ -388,6 +405,7 @@ test('browser inactivity and recovery preserves accepted work and resumes fresh 
     expect(fresh.funded).toBe(0);
     expect(invited.milestones.find((m) => m.id === milestones[1].id)?.funded).toBe(900000);
     expect(invited.milestones.find((m) => m.id === milestones[1].id)?.paid).toBe(0);
+    expect(invited.milestones.find((m) => m.id === milestones[1].id)?.refunded).toBe(900000);
     await sign(client, project.id);
     await sign(replacement, project.id);
     await openProject(client, project.id);
@@ -400,6 +418,16 @@ test('browser inactivity and recovery preserves accepted work and resumes fresh 
     expect((await state(replacement)).milestones.find((m) => m.id === fresh.id)?.status).toBe(
       'IN_PROGRESS',
     );
+    await upload(replacement, project.id, fresh.title);
+    await acceptAndPay(client, project.id, fresh.title);
+    const completed = await state(client);
+    expect(completed.projects.find((p) => p.id === project.id)?.status).toBe('COMPLETED');
+    expect(
+      completed.ledger.filter((l) => l.projectId === project.id && l.type === 'PAYOUT'),
+    ).toHaveLength(2);
+    expect(
+      completed.ledger.filter((l) => l.projectId === project.id && l.type === 'REFUND'),
+    ).toHaveLength(1);
     expect((await state(client)).recoveries.find((r) => r.projectId === project.id)?.status).toBe(
       'RESUMED',
     );

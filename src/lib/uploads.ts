@@ -5,7 +5,8 @@ import { all, get, put, transaction, type Row } from './db';
 import { type User } from './auth';
 import { assert } from './errors';
 import { projectFor, milestoneFor, text, now, audit, notify, meaningfulActivity } from './service';
-import { assistVerification } from './ai';
+import { assistVerification, aiConfigured } from './ai';
+import { inspectEvidence, verificationRules } from './verification';
 export interface UploadFile {
   name: string;
   type: string;
@@ -62,6 +63,7 @@ export async function uploadSubmission(
     description: string;
     url?: string;
     file?: UploadFile;
+    allowAiEvidence?: boolean;
   },
 ) {
   const m = milestoneFor(user, input.milestoneId);
@@ -104,6 +106,13 @@ export async function uploadSubmission(
     url = parsed.toString().slice(0, 2000);
   }
   const hash = createHash('sha256').update(bytes).digest('hex');
+  const inspected = await inspectEvidence(
+    bytes,
+    mime,
+    file.name,
+    hash,
+    verificationRules(m.verificationRules),
+  );
   const duplicate = all('submissions').some((s) => s.milestoneId === m.id && s.hash === hash);
   const checks = [
     { name: 'File present', result: 'PASS', explanation: 'Non-empty deliverable attached.' },
@@ -125,15 +134,29 @@ export async function uploadSubmission(
         : 'No identical submission for this milestone.',
     },
   ];
-  const ai = await assistVerification(m.criteria, {
-    fileName: basename(file.name),
-    mime,
-    size: file.size,
-    description,
-  });
+  const aiTextShared =
+    aiConfigured() &&
+    input.allowAiEvidence === true &&
+    process.env.AI_ALLOW_EVIDENCE_TEXT === 'true' &&
+    Boolean(inspected.text);
+  const ai = await assistVerification(
+    m.criteria,
+    {
+      fileName: basename(file.name),
+      mime,
+      size: file.size,
+      description,
+    },
+    aiTextShared
+      ? { text: inspected.text!.slice(0, 8000), reference: 'sha256:' + hash }
+      : undefined,
+  );
   const verification = {
     source: ai?.source || 'Rule-based checks — human review required',
-    checks,
+    checks: [...checks, ...inspected.checks],
+    objective: inspected.objective,
+    facts: inspected.facts,
+    aiTextShared,
     criteria:
       ai?.criteria ||
       m.criteria.map((criterion: string) => ({
