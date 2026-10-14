@@ -10,7 +10,7 @@ A full-stack freelancer accountability demonstration with versioned mutual agree
 
 The readiness pass adds structural/objective evidence checks, payment receipts and timelines, configurable risk rules, admin dispute review, optional direct OpenAI and a non-executing legal-order register. **78 Vitest tests and 28 Soroban tests pass**; production browser results and precise external limits are in [verification](docs/VERIFICATION.md). No percentage or public production-readiness claim is made. Real Freighter popup signing and live AI with owner credentials remain unverified.
 
-Start with the [complete A–M demonstration](DEMO_GUIDE.md), [MVP status](MVP_STATUS.md), [architecture](ARCHITECTURE.md), [audit](AUDIT_REPORT.md), [legal/payment readiness](LEGAL_AND_PAYMENT_READINESS.md) and [26 judge answers](JUDGE_QA.md).
+Start with the [user and presentation guide](PRESENTATION_GUIDE.md), [complete A–M demonstration](DEMO_GUIDE.md), [MVP status](MVP_STATUS.md), [architecture](ARCHITECTURE.md), [audit](AUDIT_REPORT.md), [legal/payment readiness](LEGAL_AND_PAYMENT_READINESS.md) and [26 judge answers](JUDGE_QA.md).
 
 The Testnet contract is `CDQODC2CCYGKCUKTXXN24BQK4GMKJLUK4QQOWKJP2POD5W3B5NDC27ID`. [View deployment](https://stellar.expert/explorer/testnet/tx/142e2bcf4471b33426772824168efecd615c7813949635879e8e16e5b61bb16f). Public network/asset/version details and transaction proof are in `deployments/`.
 
