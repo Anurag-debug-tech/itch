@@ -1,0 +1,49 @@
+{
+  "name": "milestoneguard",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --hostname 127.0.0.1",
+    "build": "next build",
+    "start": "next start --hostname 0.0.0.0",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "db:migrate": "node --import tsx scripts/database.ts migrate",
+    "db:seed": "node --import tsx scripts/database.ts seed",
+    "db:reset": "node --import tsx scripts/database.ts reset",
+    "setup": "node --import tsx scripts/setup.ts",
+    "jobs": "node --import tsx scripts/jobs.ts",
+    "jobs:watch": "node --import tsx scripts/jobs.ts --watch",
+    "format": "prettier --write src scripts tests docs *.ts *.mjs *.json README.md",
+    "format:check": "prettier --check src scripts tests docs *.ts *.mjs *.json README.md"
+  },
+  "dependencies": {
+    "ai": "^7.0.138",
+    "lucide-react": "^0.468.0",
+    "next": "^16.0.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.0",
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "eslint": "^9.0.0",
+    "eslint-config-next": "^16.0.0",
+    "prettier": "^3.9.10",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0",
+    "vitest": "^5.0.4"
+  },
+  "optionalDependencies": {
+    "@rolldown/binding-darwin-arm64": "^1.2.13"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=24.8.0"
+  }
+}

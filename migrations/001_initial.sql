@@ -1,0 +1,32 @@
+CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY,name TEXT NOT NULL,email TEXT NOT NULL UNIQUE,role TEXT NOT NULL CHECK(role IN ('CLIENT','FREELANCER','ADMIN')),password TEXT NOT NULL,createdAt TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS sessions(tokenHash TEXT PRIMARY KEY,userId TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,expiresAt INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY,value TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS projects(id TEXT PRIMARY KEY,clientId TEXT NOT NULL REFERENCES users(id),freelancerId TEXT NOT NULL REFERENCES users(id),data TEXT NOT NULL CHECK(json_valid(data)));
+CREATE TABLE IF NOT EXISTS milestones(id TEXT PRIMARY KEY,projectId TEXT NOT NULL REFERENCES projects(id),budget INTEGER NOT NULL CHECK(budget>0),funded INTEGER NOT NULL DEFAULT 0 CHECK(funded>=0 AND funded<=budget),paid INTEGER NOT NULL DEFAULT 0 CHECK(paid>=0),refunded INTEGER NOT NULL DEFAULT 0 CHECK(refunded>=0),data TEXT NOT NULL CHECK(json_valid(data)),CHECK(paid+refunded<=funded));
+CREATE TABLE IF NOT EXISTS agreements(id TEXT PRIMARY KEY,projectId TEXT NOT NULL REFERENCES projects(id),data TEXT NOT NULL CHECK(json_valid(data)));
+CREATE TABLE IF NOT EXISTS submissions(id TEXT PRIMARY KEY,projectId TEXT NOT NULL REFERENCES projects(id),milestoneId TEXT NOT NULL REFERENCES milestones(id),data TEXT NOT NULL CHECK(json_valid(data)));
+CREATE TABLE IF NOT EXISTS ledger(id TEXT PRIMARY KEY,projectId TEXT NOT NULL REFERENCES projects(id),milestoneId TEXT NOT NULL REFERENCES milestones(id),type TEXT NOT NULL CHECK(type IN ('FUNDING','PAYOUT','REFUND')),amount INTEGER NOT NULL CHECK(amount>0),reference TEXT NOT NULL UNIQUE,data TEXT NOT NULL CHECK(json_valid(data)));
+CREATE TRIGGER IF NOT EXISTS immutable_ledger_update BEFORE UPDATE ON ledger BEGIN SELECT RAISE(ABORT,'Ledger is immutable'); END;
+CREATE TRIGGER IF NOT EXISTS immutable_ledger_delete BEFORE DELETE ON ledger BEGIN SELECT RAISE(ABORT,'Ledger is immutable'); END;
+CREATE UNIQUE INDEX IF NOT EXISTS one_funding ON ledger(milestoneId) WHERE type='FUNDING';
+CREATE UNIQUE INDEX IF NOT EXISTS one_payout ON ledger(milestoneId) WHERE type='PAYOUT';
+CREATE UNIQUE INDEX IF NOT EXISTS one_refund ON ledger(milestoneId) WHERE type='REFUND';
+CREATE TABLE IF NOT EXISTS disputes(id TEXT PRIMARY KEY,projectId TEXT NOT NULL REFERENCES projects(id),data TEXT NOT NULL CHECK(json_valid(data)));
+CREATE TABLE IF NOT EXISTS recoveries(id TEXT PRIMARY KEY,projectId TEXT NOT NULL REFERENCES projects(id),data TEXT NOT NULL CHECK(json_valid(data)));
+CREATE TABLE IF NOT EXISTS checkins(id TEXT PRIMARY KEY,projectId TEXT NOT NULL REFERENCES projects(id),data TEXT NOT NULL CHECK(json_valid(data)));
+CREATE TABLE IF NOT EXISTS notifications(id TEXT PRIMARY KEY,userId TEXT NOT NULL REFERENCES users(id),projectId TEXT REFERENCES projects(id),data TEXT NOT NULL CHECK(json_valid(data)));
+CREATE TABLE IF NOT EXISTS audit(id TEXT PRIMARY KEY,projectId TEXT REFERENCES projects(id),data TEXT NOT NULL CHECK(json_valid(data)));
+CREATE TABLE IF NOT EXISTS rate_limits(key TEXT PRIMARY KEY,count INTEGER NOT NULL,resetAt INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS payment_intents(id TEXT PRIMARY KEY,milestoneId TEXT NOT NULL REFERENCES milestones(id),kind TEXT NOT NULL,amount INTEGER NOT NULL CHECK(amount>0),status TEXT NOT NULL,reference TEXT NOT NULL UNIQUE);
+CREATE INDEX IF NOT EXISTS milestone_project ON milestones(projectId);
+CREATE INDEX IF NOT EXISTS submission_milestone ON submissions(milestoneId);
+CREATE INDEX IF NOT EXISTS project_client ON projects(clientId);
+CREATE INDEX IF NOT EXISTS project_freelancer ON projects(freelancerId);
+CREATE TRIGGER IF NOT EXISTS immutable_agreement_terms BEFORE UPDATE ON agreements
+WHEN json_extract(OLD.data,'$.snapshot') <> json_extract(NEW.data,'$.snapshot') OR json_extract(OLD.data,'$.hash') <> json_extract(NEW.data,'$.hash') OR json_extract(OLD.data,'$.version') <> json_extract(NEW.data,'$.version')
+BEGIN SELECT RAISE(ABORT,'Agreement terms are immutable; propose a new version'); END;
+CREATE TRIGGER IF NOT EXISTS immutable_submission_update BEFORE UPDATE ON submissions BEGIN SELECT RAISE(ABORT,'Submission evidence is immutable'); END;
+CREATE TRIGGER IF NOT EXISTS immutable_audit_update BEFORE UPDATE ON audit BEGIN SELECT RAISE(ABORT,'Audit history is immutable'); END;
+CREATE TRIGGER IF NOT EXISTS integer_milestone_insert BEFORE INSERT ON milestones WHEN typeof(NEW.budget) <> 'integer' OR typeof(NEW.funded) <> 'integer' OR typeof(NEW.paid) <> 'integer' OR typeof(NEW.refunded) <> 'integer' BEGIN SELECT RAISE(ABORT,'Money must use integer minor units'); END;
+CREATE TRIGGER IF NOT EXISTS integer_milestone_update BEFORE UPDATE ON milestones WHEN typeof(NEW.budget) <> 'integer' OR typeof(NEW.funded) <> 'integer' OR typeof(NEW.paid) <> 'integer' OR typeof(NEW.refunded) <> 'integer' BEGIN SELECT RAISE(ABORT,'Money must use integer minor units'); END;
+CREATE TRIGGER IF NOT EXISTS integer_ledger_insert BEFORE INSERT ON ledger WHEN typeof(NEW.amount) <> 'integer' BEGIN SELECT RAISE(ABORT,'Money must use integer minor units'); END;

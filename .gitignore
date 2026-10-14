@@ -1,0 +1,11 @@
+node_modules/
+.next/
+.env
+.env.local
+.env.*.local
+data/*
+!data/.gitkeep
+playwright-report/
+test-results/
+*.tsbuildinfo
+.DS_Store
